@@ -1,0 +1,24 @@
+[project]
+name = "iceberg"
+version = "0.1.0"
+description = "Bloomberg-style terminal for stock market data"
+requires-python = ">=3.9"
+dependencies = [
+    "textual>=0.47.0",
+    "rich>=13.7.0",
+    "asciichartpy>=1.5.25",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

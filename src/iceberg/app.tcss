@@ -1,0 +1,106 @@
+/* Iceberg Terminal CSS */
+
+/* Global styles */
+Screen {
+    background: $surface;
+}
+
+/* Header */
+Header {
+    background: $panel;
+    color: $text;
+}
+
+/* Market indices banner */
+MarketIndices {
+    dock: top;
+    height: 3;
+    background: $panel;
+    border-bottom: solid $border;
+    padding: 1;
+}
+
+#indices_container {
+    width: 100%;
+    height: 100%;
+}
+
+.index_cell {
+    width: 1fr;
+    content-align: center middle;
+    padding: 0 1;
+}
+
+/* Main content area */
+#content {
+    height: 1fr;
+}
+
+/* Watchlist panel */
+#watchlist {
+    width: 35;
+    border-right: solid $border;
+}
+
+#ticker_list {
+    height: 100%;
+}
+
+/* Main display area */
+#main_display {
+    width: 1fr;
+}
+
+#chart {
+    height: 60%;
+    border-bottom: solid $border;
+    padding: 1;
+}
+
+#chart_container {
+    height: 100%;
+}
+
+#chart_display {
+    height: 1fr;
+}
+
+#chart_stats {
+    height: auto;
+    padding: 1 0 0 0;
+}
+
+#technical {
+    height: 40%;
+    padding: 1;
+}
+
+#technical_container {
+    height: 100%;
+}
+
+/* Status bar */
+StatusBar {
+    dock: bottom;
+    height: 1;
+    background: $panel;
+}
+
+#status_content {
+    width: 100%;
+    content-align: left middle;
+    padding: 0 1;
+}
+
+/* Color helpers */
+.gain {
+    color: $success;
+}
+
+.loss {
+    color: $error;
+}
+
+.neutral {
+    color: $text-muted;
+}
