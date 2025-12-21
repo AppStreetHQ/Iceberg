@@ -67,11 +67,6 @@ class ChartPanel(Widget):
 
         closes = [p.close for p in prices]
 
-        # Get date range
-        start_date = prices[0].trade_date
-        end_date = prices[-1].trade_date
-        date_range = f"{start_date.strftime('%d/%m/%y')} to {end_date.strftime('%d/%m/%y')}"
-
         # Calculate stats
         start_price = closes[0]
         end_price = closes[-1]
@@ -102,7 +97,7 @@ class ChartPanel(Widget):
         # Build header (above chart)
         header_text = Text()
         header_text.append(
-            f"{self.current_ticker} - {mode_label} ({self.current_range}d) - {date_range}",
+            f"{self.current_ticker} - {mode_label} ({self.current_range}d)",
             style="bold white"
         )
 

@@ -52,7 +52,7 @@ class IcebergApp(App):
 
         with Horizontal(id="content"):
             with Vertical(id="left_panel"):
-                yield TickerBanner(id="ticker_banner")
+                yield TickerBanner(self.db, id="ticker_banner")
                 yield Watchlist(self.db, self.config.watchlist_csv, id="watchlist")
             with Vertical(id="main_display"):
                 yield ChartPanel(self.db, self.config.chart_height, id="chart")
@@ -140,11 +140,13 @@ class IcebergApp(App):
         self.day_range_index = (self.day_range_index + 1) % len(self.day_ranges)
         self.day_range = self.day_ranges[self.day_range_index]
 
-        # Update chart and technical panels
+        # Update all panels
+        banner = self.query_one("#ticker_banner", TickerBanner)
         chart = self.query_one("#chart", ChartPanel)
         technical = self.query_one("#technical", TechnicalPanel)
         watchlist = self.query_one("#watchlist", Watchlist)
 
+        banner.update_range(self.day_range)
         chart.update_range(self.day_range)
         technical.update_range(self.day_range)
         watchlist.update_range(self.day_range)

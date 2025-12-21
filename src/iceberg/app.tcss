@@ -63,6 +63,13 @@ MarketIndices {
     padding: 1 1 0 1;
 }
 
+#date_range {
+    color: white;
+    background: black;
+    text-style: bold;
+    padding: 1 1 0 1;
+}
+
 /* Watchlist panel */
 #watchlist {
     height: 1fr;
