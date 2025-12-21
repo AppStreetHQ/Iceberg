@@ -65,6 +65,11 @@ class ChartPanel(Widget):
 
         closes = [p.close for p in prices]
 
+        # Get date range
+        start_date = prices[0].trade_date
+        end_date = prices[-1].trade_date
+        date_range = f"{start_date.strftime('%d/%m/%y')} to {end_date.strftime('%d/%m/%y')}"
+
         # Calculate stats
         start_price = closes[0]
         end_price = closes[-1]
@@ -92,9 +97,14 @@ class ChartPanel(Widget):
             # Color Y-axis labels based on 0% baseline for relative mode
             chart_display = self.color_yaxis_by_baseline_percent(chart_str, 0.0)
 
-        # Build colored stats using Rich Text
+        # Build colored stats using Rich Text - two lines
         stats_text = Text()
-        stats_text.append(f"{self.current_ticker} - {mode_label} ({self.current_range}d) ", style="bold white")
+        # Line 1: Ticker, mode, range, dates
+        stats_text.append(
+            f"{self.current_ticker} - {mode_label} ({self.current_range}d) - {date_range}\n",
+            style="bold white"
+        )
+        # Line 2: Price stats with color
         stats_text.append(f"{arrow} ", style=color)
         stats_text.append(
             f"Start: ${start_price:.2f} | High: ${high_price:.2f} | "
