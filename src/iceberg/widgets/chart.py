@@ -6,8 +6,10 @@ from textual.widgets import Static
 from textual.containers import Vertical
 from typing import Optional
 import asciichartpy as acp
+from rich.text import Text
 
 from ..data.db import Database
+from ..utils.formatting import COLOR_GAIN, COLOR_LOSS
 
 
 class ChartPanel(Widget):
@@ -63,14 +65,6 @@ class ChartPanel(Widget):
 
         closes = [p.close for p in prices]
 
-        # Render chart based on mode
-        if self.chart_mode == "absolute":
-            chart_str = self.render_absolute_chart(closes)
-            mode_label = "Absolute Price"
-        else:
-            chart_str = self.render_relative_chart(closes)
-            mode_label = "Relative % Change"
-
         # Calculate stats
         start_price = closes[0]
         end_price = closes[-1]
@@ -79,16 +73,38 @@ class ChartPanel(Widget):
         change = end_price - start_price
         change_pct = (change / start_price) * 100 if start_price != 0 else 0
 
-        stats = (
-            f"{self.current_ticker} - {mode_label} ({self.current_range}d) | "
+        # Determine color based on gain/loss
+        is_gain = end_price >= start_price
+        color = COLOR_GAIN if is_gain else COLOR_LOSS
+        arrow = "▲" if is_gain else "▼"
+
+        # Render chart based on mode with color indicator
+        if self.chart_mode == "absolute":
+            chart_str = self.render_absolute_chart(closes)
+            mode_label = "Absolute Price"
+
+            # Color Y-axis labels based on start price
+            chart_display = self.color_yaxis_by_baseline(chart_str, start_price)
+        else:
+            chart_str = self.render_relative_chart(closes)
+            mode_label = "Relative % Change"
+            # Color entire chart based on final position for relative mode
+            chart_display = Text(chart_str, style=color)
+
+        # Build colored stats using Rich Text
+        stats_text = Text()
+        stats_text.append(f"{self.current_ticker} - {mode_label} ({self.current_range}d) ", style="bold white")
+        stats_text.append(f"{arrow} ", style=color)
+        stats_text.append(
             f"Start: ${start_price:.2f} | High: ${high_price:.2f} | "
-            f"Low: ${low_price:.2f} | Last: ${end_price:.2f} | "
-            f"Change: {change:+.2f} ({change_pct:+.2f}%)"
+            f"Low: ${low_price:.2f} | Last: ${end_price:.2f} | ",
+            style="white"
         )
+        stats_text.append(f"Change: {change:+.2f} ({change_pct:+.2f}%)", style=color)
 
         # Update display
-        self.query_one("#chart_display", Static).update(chart_str)
-        self.query_one("#chart_stats", Static).update(stats)
+        self.query_one("#chart_display", Static).update(chart_display)
+        self.query_one("#chart_stats", Static).update(stats_text)
 
     def render_absolute_chart(self, closes: list[float]) -> str:
         """Render absolute price chart"""
@@ -120,3 +136,40 @@ class ChartPanel(Widget):
             return acp.plot(relative_pcts, config)
         except Exception as e:
             return f"Error rendering chart: {e}"
+
+    def color_yaxis_by_baseline(self, chart_str: str, baseline_price: float) -> Text:
+        """Color Y-axis labels green if >= baseline, red if < baseline"""
+        result = Text()
+        lines = chart_str.split("\n")
+
+        for line in lines:
+            if "┤" in line:
+                # Split Y-axis label from chart
+                parts = line.split("┤", 1)
+                y_label = parts[0]
+                chart_part = "┤" + parts[1] if len(parts) > 1 else ""
+
+                # Try to extract price from Y-axis label
+                try:
+                    # Remove whitespace and extract number
+                    price_str = y_label.strip()
+                    price = float(price_str)
+
+                    # Color based on baseline
+                    if price >= baseline_price:
+                        result.append(y_label, style=COLOR_GAIN)
+                    else:
+                        result.append(y_label, style=COLOR_LOSS)
+                except (ValueError, AttributeError):
+                    # If can't parse price, use default color
+                    result.append(y_label, style="white")
+
+                # Add chart part in white
+                result.append(chart_part, style="white")
+            else:
+                # No Y-axis on this line, just append as is
+                result.append(line, style="white")
+
+            result.append("\n")
+
+        return result

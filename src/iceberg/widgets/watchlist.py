@@ -6,11 +6,20 @@ from textual.widget import Widget
 from textual.widgets import OptionList
 from textual.widgets.option_list import Option
 from typing import Optional
+from rich.text import Text
 
 from ..data.db import Database
 from ..data.loader import load_watchlist_from_csv
 from ..data.models import WatchlistItem
-from ..utils.formatting import format_price, format_change, format_change_pct, get_arrow
+from ..utils.formatting import (
+    format_price,
+    format_change,
+    format_change_pct,
+    get_arrow,
+    COLOR_GAIN,
+    COLOR_LOSS,
+    COLOR_NEUTRAL,
+)
 from pathlib import Path
 
 
@@ -74,9 +83,22 @@ class Watchlist(Widget):
             change_pct_str = format_change_pct(item.price_change_pct)
             arrow = get_arrow(item.price_change)
 
-            # Create option with styled text
+            # Create Rich Text with color styling
             if item.current_price is not None and item.previous_close is not None:
-                display = f"{item.ticker:<6} {price_str:>10} {arrow} {change_str:>8} ({change_pct_str:>7})"
+                # Determine color based on gain/loss
+                if item.is_gain:
+                    color = COLOR_GAIN
+                elif item.is_loss:
+                    color = COLOR_LOSS
+                else:
+                    color = "white"
+
+                # Build styled text
+                text = Text()
+                text.append(f"{item.ticker:<6} ", style="bold")
+                text.append(f"{price_str:>10} {arrow} {change_str:>8} ({change_pct_str:>7})", style=color)
+
+                display = text
             else:
                 display = f"{item.ticker:<6} {price_str:>10}"
 

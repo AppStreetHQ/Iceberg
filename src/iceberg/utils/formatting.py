@@ -2,6 +2,11 @@
 
 from typing import Optional
 
+# Color constants - single source of truth
+COLOR_GAIN = "#00ff00"  # Bright green
+COLOR_LOSS = "#ff0000"  # Bright red
+COLOR_NEUTRAL = "#888888"  # Gray
+
 
 def format_price(price: Optional[float], decimals: int = 2) -> str:
     """Format price with currency symbol"""

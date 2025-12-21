@@ -2,21 +2,21 @@
 
 /* Global styles */
 Screen {
-    background: $surface;
+    background: black;
 }
 
 /* Header */
 Header {
-    background: $panel;
-    color: $text;
+    background: black;
+    color: white;
 }
 
 /* Market indices banner */
 MarketIndices {
     dock: top;
     height: 3;
-    background: $panel;
-    border-bottom: solid $border;
+    background: black;
+    border-bottom: solid #333333;
     padding: 1;
 }
 
@@ -38,69 +38,86 @@ MarketIndices {
 
 /* Watchlist panel */
 #watchlist {
-    width: 35;
-    border-right: solid $border;
+    width: 45;
+    border-right: solid #333333;
+    background: black;
 }
 
 #ticker_list {
     height: 100%;
+    background: black;
 }
 
 /* Main display area */
 #main_display {
     width: 1fr;
+    background: black;
 }
 
 #chart {
     height: 60%;
-    border-bottom: solid $border;
+    border-bottom: solid #333333;
     padding: 1;
+    background: black;
 }
 
 #chart_container {
     height: 100%;
+    background: black;
 }
 
 #chart_display {
     height: 1fr;
+    background: black;
+    color: white;
 }
 
 #chart_stats {
     height: auto;
     padding: 1 0 0 0;
+    background: black;
+    color: white;
 }
 
 #technical {
     height: 40%;
     padding: 1;
+    background: black;
 }
 
 #technical_container {
     height: 100%;
+    background: black;
+}
+
+#technical_display {
+    color: white;
 }
 
 /* Status bar */
 StatusBar {
     dock: bottom;
     height: 1;
-    background: $panel;
+    background: black;
 }
 
 #status_content {
     width: 100%;
     content-align: left middle;
     padding: 0 1;
+    background: black;
+    color: #888888;
 }
 
 /* Color helpers */
 .gain {
-    color: $success;
+    color: #00ff00;
 }
 
 .loss {
-    color: $error;
+    color: #ff0000;
 }
 
 .neutral {
-    color: $text-muted;
+    color: #888888;
 }
