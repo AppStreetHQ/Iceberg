@@ -104,6 +104,13 @@ MarketIndices {
     background: black;
 }
 
+#chart_header {
+    height: auto;
+    padding: 0 0 2 0;
+    background: black;
+    color: white;
+}
+
 #chart_display {
     height: 1fr;
     background: black;
@@ -112,7 +119,7 @@ MarketIndices {
 
 #chart_stats {
     height: auto;
-    padding: 1 0 0 0;
+    padding: 2 0 0 0;
     background: black;
     color: white;
 }

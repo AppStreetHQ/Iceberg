@@ -38,6 +38,7 @@ class Watchlist(Widget):
         self.db = db
         self.csv_path = csv_path
         self.items: list[WatchlistItem] = []
+        self.sort_mode: str = "alpha"  # "alpha" or "change"
 
     def compose(self) -> ComposeResult:
         """Compose watchlist"""
@@ -68,7 +69,8 @@ class Watchlist(Widget):
 
             self.items.append(item)
 
-        # Populate option list
+        # Sort and populate option list
+        self.sort_items()
         self.update_display()
 
     def update_display(self) -> None:
@@ -130,3 +132,23 @@ class Watchlist(Widget):
             if 0 <= idx < len(self.items):
                 return self.items[idx]
         return None
+
+    def sort_items(self) -> None:
+        """Sort items based on current sort mode"""
+        if self.sort_mode == "alpha":
+            # Sort alphabetically by ticker
+            self.items.sort(key=lambda x: x.ticker)
+        elif self.sort_mode == "change":
+            # Sort by price change % (descending, best performers first)
+            # Put items without price data at the end
+            self.items.sort(
+                key=lambda x: x.price_change_pct if x.price_change_pct is not None else -999999,
+                reverse=True
+            )
+
+    def toggle_sort(self) -> str:
+        """Toggle sort mode and re-sort"""
+        self.sort_mode = "change" if self.sort_mode == "alpha" else "alpha"
+        self.sort_items()
+        self.update_display()
+        return self.sort_mode

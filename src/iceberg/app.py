@@ -28,6 +28,7 @@ class IcebergApp(App):
         Binding("up", "watchlist_up", "Previous ticker", show=False),
         Binding("c", "toggle_chart_mode", "Toggle chart mode", show=True),
         Binding("r", "cycle_day_range", "Cycle day range", show=True),
+        Binding("s", "toggle_sort", "Toggle sort", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
 
@@ -148,3 +149,13 @@ class IcebergApp(App):
         # Update status bar
         status = self.query_one("#status_bar", StatusBar)
         status.update_status(f"Day range changed to {self.day_range}d")
+
+    def action_toggle_sort(self) -> None:
+        """Toggle watchlist sort mode"""
+        watchlist = self.query_one("#watchlist", Watchlist)
+        sort_mode = watchlist.toggle_sort()
+
+        # Update status bar
+        status = self.query_one("#status_bar", StatusBar)
+        mode_label = "Alphabetical" if sort_mode == "alpha" else "By % Change"
+        status.update_status(f"Watchlist sorted: {mode_label}")

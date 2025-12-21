@@ -26,6 +26,7 @@ class ChartPanel(Widget):
     def compose(self) -> ComposeResult:
         """Compose chart display"""
         with Vertical(id="chart_container"):
+            yield Static("", id="chart_header")
             yield Static("Select a ticker to view chart", id="chart_display")
             yield Static("", id="chart_stats")
 
@@ -57,6 +58,7 @@ class ChartPanel(Widget):
         prices = self.db.get_daily_prices(self.current_ticker, self.current_range)
 
         if not prices or len(prices) < 2:
+            self.query_one("#chart_header", Static).update("")
             self.query_one("#chart_display", Static).update(
                 f"Insufficient data for {self.current_ticker}"
             )
@@ -97,14 +99,15 @@ class ChartPanel(Widget):
             # Color Y-axis labels based on 0% baseline for relative mode
             chart_display = self.color_yaxis_by_baseline_percent(chart_str, 0.0)
 
-        # Build colored stats using Rich Text - two lines
-        stats_text = Text()
-        # Line 1: Ticker, mode, range, dates
-        stats_text.append(
-            f"{self.current_ticker} - {mode_label} ({self.current_range}d) - {date_range}\n",
+        # Build header (above chart)
+        header_text = Text()
+        header_text.append(
+            f"{self.current_ticker} - {mode_label} ({self.current_range}d) - {date_range}",
             style="bold white"
         )
-        # Line 2: Price stats with color
+
+        # Build stats (below chart)
+        stats_text = Text()
         stats_text.append(f"{arrow} ", style=color)
         stats_text.append(
             f"Start: ${start_price:.2f} | High: ${high_price:.2f} | "
@@ -114,6 +117,7 @@ class ChartPanel(Widget):
         stats_text.append(f"Change: {change:+.2f} ({change_pct:+.2f}%)", style=color)
 
         # Update display
+        self.query_one("#chart_header", Static).update(header_text)
         self.query_one("#chart_display", Static).update(chart_display)
         self.query_one("#chart_stats", Static).update(stats_text)
 
