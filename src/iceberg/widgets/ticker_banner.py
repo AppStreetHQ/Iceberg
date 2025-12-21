@@ -16,13 +16,14 @@ class TickerBanner(Widget):
     def compose(self) -> ComposeResult:
         """Compose the banner display"""
         yield Static("", id="ticker_ascii")
+        yield Static("", id="company_name")
 
     def on_mount(self) -> None:
         """Render initial ticker on mount"""
-        self.update_ticker(self.current_ticker)
+        self.update_ticker(self.current_ticker, "Apple Inc.")
 
-    def update_ticker(self, ticker: str) -> None:
-        """Update the ASCII art for new ticker"""
+    def update_ticker(self, ticker: str, company_name: str = "") -> None:
+        """Update the ASCII art for new ticker and company name"""
         self.current_ticker = ticker.upper()
 
         # Generate ASCII art using doom font
@@ -34,3 +35,6 @@ class TickerBanner(Widget):
         except Exception as e:
             # Fallback to plain text if something goes wrong
             self.query_one("#ticker_ascii", Static).update(f"\n  {self.current_ticker}\n")
+
+        # Update company name
+        self.query_one("#company_name", Static).update(company_name)

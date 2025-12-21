@@ -121,3 +121,12 @@ class Watchlist(Widget):
             if 0 <= idx < len(self.items):
                 return self.items[idx].ticker
         return None
+
+    def get_selected_item(self) -> Optional[WatchlistItem]:
+        """Get currently selected watchlist item"""
+        option_list = self.query_one("#ticker_list", OptionList)
+        if option_list.highlighted is not None and self.items:
+            idx = option_list.highlighted
+            if 0 <= idx < len(self.items):
+                return self.items[idx]
+        return None
