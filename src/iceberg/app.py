@@ -32,14 +32,14 @@ class IcebergApp(App):
 
     # Reactive state - automatically updates UI when changed
     selected_ticker = reactive("AAPL", init=False)
-    day_range = reactive(30, init=False)  # 7, 30, 90, 365
+    day_range = reactive(30, init=False)  # 7, 30, 90, 120
     chart_mode = reactive("absolute", init=False)  # "absolute" or "relative"
 
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
         self.db = Database(config.db_path)
-        self.day_ranges = [7, 30, 90, 365]
+        self.day_ranges = [7, 30, 90, 120]
         self.day_range_index = 1  # Start at 30 days
 
     def compose(self) -> ComposeResult:
@@ -122,7 +122,7 @@ class IcebergApp(App):
         )
 
     def action_cycle_day_range(self) -> None:
-        """Cycle through day ranges (7, 30, 90, 365)"""
+        """Cycle through day ranges (7, 30, 90, 120)"""
         self.day_range_index = (self.day_range_index + 1) % len(self.day_ranges)
         self.day_range = self.day_ranges[self.day_range_index]
 
