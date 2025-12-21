@@ -3,7 +3,7 @@
 from textual.app import ComposeResult
 from textual.message import Message
 from textual.widget import Widget
-from textual.widgets import OptionList
+from textual.widgets import OptionList, Static
 from textual.widgets.option_list import Option
 from typing import Optional
 from rich.text import Text
@@ -39,9 +39,12 @@ class Watchlist(Widget):
         self.csv_path = csv_path
         self.items: list[WatchlistItem] = []
         self.sort_mode: str = "alpha"  # "alpha" or "change"
+        self.change_mode: str = "day"  # "day" or "range"
+        self.day_range: int = 90  # Current day range for range-based calculations
 
     def compose(self) -> ComposeResult:
         """Compose watchlist"""
+        yield Static("", id="watchlist_header")
         yield OptionList(id="ticker_list")
 
     def on_mount(self) -> None:
@@ -58,7 +61,7 @@ class Watchlist(Widget):
         for ticker, name in ticker_pairs:
             item = WatchlistItem(ticker=ticker, name=name)
 
-            # Fetch latest and previous prices
+            # Fetch latest and previous prices for daily change
             latest = self.db.get_latest_price(ticker)
             if latest:
                 item.current_price = latest.close
@@ -69,28 +72,49 @@ class Watchlist(Widget):
 
             self.items.append(item)
 
+        # Calculate range-based changes
+        self.calculate_range_changes()
+
         # Sort and populate option list
         self.sort_items()
         self.update_display()
 
+    def update_header(self) -> None:
+        """Update the header label based on change mode"""
+        if self.change_mode == "day":
+            header_text = "Last Change"
+        else:
+            header_text = f"{self.day_range}d Range Change"
+
+        self.query_one("#watchlist_header", Static).update(header_text)
+
     def update_display(self) -> None:
         """Update the display with current data"""
+        self.update_header()
         option_list = self.query_one("#ticker_list", OptionList)
         option_list.clear_options()
 
         for item in self.items:
+            # Use range or day change based on change_mode
+            if self.change_mode == "range":
+                change = item.range_change
+                change_pct = item.range_change_pct
+            else:
+                change = item.price_change
+                change_pct = item.price_change_pct
+
             # Format display string
             price_str = format_price(item.current_price)
-            change_str = format_change(item.price_change)
-            change_pct_str = format_change_pct(item.price_change_pct)
-            arrow = get_arrow(item.price_change)
+            change_str = format_change(change)
+            change_pct_str = format_change_pct(change_pct)
+            arrow = get_arrow(change)
 
             # Create Rich Text with color styling
-            if item.current_price is not None and item.previous_close is not None:
+            if item.current_price is not None and change is not None:
                 # Determine color based on gain/loss
-                if item.is_gain:
+                if change > 0:
                     color = COLOR_GAIN
-                elif item.is_loss:
+                elif change < 0:
                     color = COLOR_LOSS
                 else:
                     color = "white"
@@ -140,11 +164,17 @@ class Watchlist(Widget):
             self.items.sort(key=lambda x: x.ticker)
         elif self.sort_mode == "change":
             # Sort by price change % (descending, best performers first)
-            # Put items without price data at the end
-            self.items.sort(
-                key=lambda x: x.price_change_pct if x.price_change_pct is not None else -999999,
-                reverse=True
-            )
+            # Use range or day change based on change_mode
+            if self.change_mode == "range":
+                self.items.sort(
+                    key=lambda x: x.range_change_pct if x.range_change_pct is not None else -999999,
+                    reverse=True
+                )
+            else:
+                self.items.sort(
+                    key=lambda x: x.price_change_pct if x.price_change_pct is not None else -999999,
+                    reverse=True
+                )
 
     def toggle_sort(self) -> str:
         """Toggle sort mode and re-sort"""
@@ -152,3 +182,41 @@ class Watchlist(Widget):
         self.sort_items()
         self.update_display()
         return self.sort_mode
+
+    def calculate_range_changes(self) -> None:
+        """Calculate price changes over the selected day range"""
+        for item in self.items:
+            # Fetch prices for the range
+            prices = self.db.get_daily_prices(item.ticker, self.day_range)
+
+            if prices and len(prices) >= 2:
+                start_price = prices[0].close
+                end_price = prices[-1].close
+
+                item.range_start_price = start_price
+                item.range_change = end_price - start_price
+                item.range_change_pct = (
+                    ((end_price - start_price) / start_price) * 100
+                    if start_price != 0 else None
+                )
+            else:
+                item.range_start_price = None
+                item.range_change = None
+                item.range_change_pct = None
+
+    def update_range(self, day_range: int) -> None:
+        """Update day range and recalculate range-based changes"""
+        self.day_range = day_range
+        self.calculate_range_changes()
+        if self.change_mode == "range":
+            # Re-sort and update if we're in range mode
+            self.sort_items()
+            self.update_display()
+
+    def toggle_change_mode(self) -> str:
+        """Toggle between day and range change modes"""
+        self.change_mode = "range" if self.change_mode == "day" else "day"
+        # Re-sort and update display with new change mode
+        self.sort_items()
+        self.update_display()
+        return self.change_mode

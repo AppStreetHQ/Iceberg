@@ -29,6 +29,7 @@ class IcebergApp(App):
         Binding("c", "toggle_chart_mode", "Toggle chart mode", show=True),
         Binding("r", "cycle_day_range", "Cycle day range", show=True),
         Binding("s", "toggle_sort", "Toggle sort", show=True),
+        Binding("d", "toggle_change_mode", "Toggle day/range", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
 
@@ -142,9 +143,11 @@ class IcebergApp(App):
         # Update chart and technical panels
         chart = self.query_one("#chart", ChartPanel)
         technical = self.query_one("#technical", TechnicalPanel)
+        watchlist = self.query_one("#watchlist", Watchlist)
 
         chart.update_range(self.day_range)
         technical.update_range(self.day_range)
+        watchlist.update_range(self.day_range)
 
         # Update status bar
         status = self.query_one("#status_bar", StatusBar)
@@ -159,3 +162,13 @@ class IcebergApp(App):
         status = self.query_one("#status_bar", StatusBar)
         mode_label = "Alphabetical" if sort_mode == "alpha" else "By % Change"
         status.update_status(f"Watchlist sorted: {mode_label}")
+
+    def action_toggle_change_mode(self) -> None:
+        """Toggle between day and range change display"""
+        watchlist = self.query_one("#watchlist", Watchlist)
+        change_mode = watchlist.toggle_change_mode()
+
+        # Update status bar
+        status = self.query_one("#status_bar", StatusBar)
+        mode_label = "Daily Change" if change_mode == "day" else f"{self.day_range}d Range Change"
+        status.update_status(f"Watchlist showing: {mode_label}")

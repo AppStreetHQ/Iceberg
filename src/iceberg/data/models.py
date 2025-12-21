@@ -43,6 +43,9 @@ class WatchlistItem:
     name: str
     current_price: Optional[float] = None
     previous_close: Optional[float] = None
+    range_start_price: Optional[float] = None  # Price at start of selected range
+    range_change: Optional[float] = None  # Dollar change over range
+    range_change_pct: Optional[float] = None  # Percentage change over range
 
     @property
     def price_change(self) -> Optional[float]:
