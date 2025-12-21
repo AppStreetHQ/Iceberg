@@ -60,7 +60,7 @@ MarketIndices {
     color: white;
     background: black;
     text-style: bold;
-    padding: 0 1;
+    padding: 1 1 0 1;
 }
 
 /* Watchlist panel */
@@ -72,6 +72,18 @@ MarketIndices {
 #ticker_list {
     height: 100%;
     background: black;
+}
+
+#ticker_list:focus {
+    border: none;
+}
+
+#ticker_list > .option-list--option-highlighted {
+    background: #1a1a1a;
+}
+
+#ticker_list:focus > .option-list--option-highlighted {
+    background: #2a2a2a;
 }
 
 /* Main display area */

@@ -33,7 +33,7 @@ class IcebergApp(App):
 
     # Reactive state - automatically updates UI when changed
     selected_ticker = reactive("AAPL", init=False)
-    day_range = reactive(30, init=False)  # 7, 30, 90, 120
+    day_range = reactive(90, init=False)  # 7, 30, 90, 120
     chart_mode = reactive("absolute", init=False)  # "absolute" or "relative"
 
     def __init__(self, config: Config):
@@ -41,7 +41,7 @@ class IcebergApp(App):
         self.config = config
         self.db = Database(config.db_path)
         self.day_ranges = [7, 30, 90, 120]
-        self.day_range_index = 1  # Start at 30 days
+        self.day_range_index = 2  # Start at 90 days
 
     def compose(self) -> ComposeResult:
         """Create child widgets"""
