@@ -36,10 +36,29 @@ MarketIndices {
     height: 1fr;
 }
 
-/* Watchlist panel */
-#watchlist {
+/* Left panel - ticker banner + watchlist */
+#left_panel {
     width: 45;
     border-right: solid #333333;
+    background: black;
+}
+
+/* ASCII ticker banner */
+#ticker_banner {
+    height: auto;
+    background: black;
+    border-bottom: solid #333333;
+    padding: 1;
+}
+
+#ticker_ascii {
+    color: #00ff00;
+    background: black;
+}
+
+/* Watchlist panel */
+#watchlist {
+    height: 1fr;
     background: black;
 }
 

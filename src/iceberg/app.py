@@ -9,6 +9,7 @@ from textual.widgets import Header
 from .config import Config
 from .data.db import Database
 from .widgets.market_indices import MarketIndices
+from .widgets.ticker_banner import TickerBanner
 from .widgets.watchlist import Watchlist
 from .widgets.chart import ChartPanel
 from .widgets.technical_panel import TechnicalPanel
@@ -48,7 +49,9 @@ class IcebergApp(App):
         yield MarketIndices(self.db, self.config.market_indices)
 
         with Horizontal(id="content"):
-            yield Watchlist(self.db, self.config.watchlist_csv, id="watchlist")
+            with Vertical(id="left_panel"):
+                yield TickerBanner(id="ticker_banner")
+                yield Watchlist(self.db, self.config.watchlist_csv, id="watchlist")
             with Vertical(id="main_display"):
                 yield ChartPanel(self.db, self.config.chart_height, id="chart")
                 yield TechnicalPanel(self.db, id="technical")
@@ -71,6 +74,10 @@ class IcebergApp(App):
 
     def update_panels(self) -> None:
         """Update chart and technical panels with current ticker and range"""
+        # Update ticker banner
+        banner = self.query_one("#ticker_banner", TickerBanner)
+        banner.update_ticker(self.selected_ticker)
+
         chart = self.query_one("#chart", ChartPanel)
         technical = self.query_one("#technical", TechnicalPanel)
 
