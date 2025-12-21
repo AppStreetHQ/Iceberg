@@ -88,8 +88,9 @@ class ChartPanel(Widget):
         else:
             chart_str = self.render_relative_chart(closes)
             mode_label = "Relative % Change"
-            # Color entire chart based on final position for relative mode
-            chart_display = Text(chart_str, style=color)
+
+            # Color Y-axis labels based on 0% baseline for relative mode
+            chart_display = self.color_yaxis_by_baseline_percent(chart_str, 0.0)
 
         # Build colored stats using Rich Text
         stats_text = Text()
@@ -162,6 +163,48 @@ class ChartPanel(Widget):
                         result.append(y_label, style=COLOR_LOSS)
                 except (ValueError, AttributeError):
                     # If can't parse price, use default color
+                    result.append(y_label, style="white")
+
+                # Add chart part in white
+                result.append(chart_part, style="white")
+            else:
+                # No Y-axis on this line, just append as is
+                result.append(line, style="white")
+
+            result.append("\n")
+
+        return result
+
+    def color_yaxis_by_baseline_percent(self, chart_str: str, baseline_pct: float) -> Text:
+        """Color Y-axis percent labels green if >= baseline, red if < baseline"""
+        result = Text()
+        lines = chart_str.split("\n")
+
+        for line in lines:
+            if "┤" in line:
+                # Split Y-axis label from chart
+                parts = line.split("┤", 1)
+                y_label = parts[0]
+                chart_part = "┤" + parts[1] if len(parts) > 1 else ""
+
+                # Extract percentage from Y-axis label
+                # Format from asciichartpy is like "  8.32%" or " -1.00%"
+                pct_str = y_label.strip().replace("%", "").strip()
+
+                if pct_str:  # Only process non-empty labels
+                    try:
+                        pct = float(pct_str)
+
+                        # Color based on baseline (0%)
+                        if pct >= baseline_pct:
+                            result.append(y_label, style=COLOR_GAIN)
+                        else:
+                            result.append(y_label, style=COLOR_LOSS)
+                    except ValueError:
+                        # If parsing somehow fails, keep white
+                        result.append(y_label, style="white")
+                else:
+                    # Empty label, keep white
                     result.append(y_label, style="white")
 
                 # Add chart part in white
