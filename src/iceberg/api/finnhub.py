@@ -155,3 +155,25 @@ class FinnhubClient:
         except Exception as e:
             print(f"Error fetching profile for {ticker}: {e}")
             return None
+
+    def get_market_status(self, exchange: str = 'US') -> Optional[Dict[str, Any]]:
+        """Get market open/closed status
+
+        Args:
+            exchange: Exchange code (default: 'US' for US markets)
+
+        Returns:
+            Dict with market status:
+            - exchange: Exchange name
+            - holiday: Holiday name if market closed for holiday
+            - isOpen: Boolean indicating if market is currently open
+            - session: Current session (e.g., 'market', 'pre', 'post', 'closed')
+            - timezone: Market timezone
+            - t: Timestamp
+        """
+        try:
+            data = self._request('/stock/market-status', {'exchange': exchange})
+            return data
+        except Exception as e:
+            print(f"Error fetching market status: {e}")
+            return None

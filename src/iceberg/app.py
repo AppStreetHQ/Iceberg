@@ -63,7 +63,7 @@ class IcebergApp(App):
                 yield ChartPanel(self.db, self.config.chart_height, id="chart")
                 yield TechnicalPanel(self.db, id="technical")
 
-        yield StatusBar(id="status_bar")
+        yield StatusBar(finnhub_client=self.finnhub, id="status_bar")
 
     def on_mount(self) -> None:
         """Initialize app on mount"""
@@ -219,15 +219,18 @@ class IcebergApp(App):
         # Refresh all widgets that display prices
         watchlist = self.query_one("#watchlist", Watchlist)
         market_indices = self.query_one(MarketIndices)
+        status = self.query_one("#status_bar", StatusBar)
 
         watchlist.refresh_prices()
         market_indices.refresh_prices()
+
+        # Refresh market status as well
+        status.refresh_market_status()
 
         # Update current ticker panels
         self.update_panels()
 
         # Show completion message
-        status = self.query_one("#status_bar", StatusBar)
         status.update_status(
             f"✓ Updated {success_count}/{total} tickers successfully"
         )
