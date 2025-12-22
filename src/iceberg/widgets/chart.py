@@ -202,14 +202,16 @@ class ChartPanel(Widget):
 
                 if pct_str:  # Only process non-empty labels
                     try:
-                        pct = float(pct_str)
+                        # Remove any non-numeric chars except minus and decimal
+                        pct_str_clean = ''.join(c for c in pct_str if c.isdigit() or c in '.-')
+                        pct = float(pct_str_clean)
 
                         # Color based on baseline (0%)
                         if pct >= baseline_pct:
                             result.append(y_label, style=COLOR_GAIN)
                         else:
                             result.append(y_label, style=COLOR_LOSS)
-                    except ValueError:
+                    except (ValueError, AttributeError):
                         # If parsing somehow fails, keep white
                         result.append(y_label, style="white")
                 else:
