@@ -3,6 +3,7 @@
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Static
+from rich.text import Text
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -52,20 +53,35 @@ class StatusBar(Widget):
                 self.market_status = "CLOSED"
                 self.market_indicator = "🔴"
 
-    def update_status(self, message: str = "") -> None:
-        """Update status bar content"""
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        hints = "j/k:nav  c:chart  r:range  s:sort  d:day/range  u:update  q:quit"
+    def update_status(self, message: str = "", color: Optional[str] = None) -> None:
+        """Update status bar content
 
+        Args:
+            message: Status message to display
+            color: Optional color for the message ('blue', 'red', 'green', etc.)
+        """
+        hints = "j/k:nav  c:chart  r:range  s:sort  d:day/range  u:update  q:quit"
         market_info = f"Market: {self.market_status} {self.market_indicator}"
 
+        # Build status text with optional color
+        text = Text()
+        text.append(market_info, style="white")
+        text.append(" | ", style="white")
+
         if message:
-            content = f"{market_info} | {message} | {hints}"
+            if color:
+                text.append(message, style=color)
+            else:
+                text.append(message, style="white")
         else:
-            content = f"{market_info} | Last update: {now} | {hints}"
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            text.append(f"Last update: {now}", style="white")
+
+        text.append(" | ", style="white")
+        text.append(hints, style="dim")
 
         status_widget = self.query_one("#status_content", Static)
-        status_widget.update(content)
+        status_widget.update(text)
 
     def refresh_market_status(self) -> None:
         """Refresh market status and update display"""

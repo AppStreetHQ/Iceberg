@@ -96,12 +96,6 @@ class IcebergApp(App):
         chart.update_ticker(self.selected_ticker, self.day_range)
         technical.update_ticker(self.selected_ticker, self.day_range)
 
-        # Update status bar
-        status = self.query_one("#status_bar", StatusBar)
-        status.update_status(
-            f"Viewing {self.selected_ticker} | Range: {self.day_range}d | Mode: {self.chart_mode}"
-        )
-
     def action_watchlist_down(self) -> None:
         """Move down in watchlist"""
         watchlist = self.query_one("#watchlist", Watchlist)
@@ -134,12 +128,6 @@ class IcebergApp(App):
         chart.toggle_mode()
         self.chart_mode = chart.chart_mode
 
-        # Update status bar
-        status = self.query_one("#status_bar", StatusBar)
-        status.update_status(
-            f"Chart mode: {self.chart_mode} | Range: {self.day_range}d"
-        )
-
     def action_cycle_day_range(self) -> None:
         """Cycle through day ranges (7, 30, 90, 120)"""
         self.day_range_index = (self.day_range_index + 1) % len(self.day_ranges)
@@ -156,29 +144,15 @@ class IcebergApp(App):
         technical.update_range(self.day_range)
         watchlist.update_range(self.day_range)
 
-        # Update status bar
-        status = self.query_one("#status_bar", StatusBar)
-        status.update_status(f"Day range changed to {self.day_range}d")
-
     def action_toggle_sort(self) -> None:
         """Toggle watchlist sort mode"""
         watchlist = self.query_one("#watchlist", Watchlist)
-        sort_mode = watchlist.toggle_sort()
-
-        # Update status bar
-        status = self.query_one("#status_bar", StatusBar)
-        mode_label = "Alphabetical" if sort_mode == "alpha" else "By % Change"
-        status.update_status(f"Watchlist sorted: {mode_label}")
+        watchlist.toggle_sort()
 
     def action_toggle_change_mode(self) -> None:
         """Toggle between day and range change display"""
         watchlist = self.query_one("#watchlist", Watchlist)
-        change_mode = watchlist.toggle_change_mode()
-
-        # Update status bar
-        status = self.query_one("#status_bar", StatusBar)
-        mode_label = "Daily Change" if change_mode == "day" else f"{self.day_range}d Range Change"
-        status.update_status(f"Watchlist showing: {mode_label}")
+        watchlist.toggle_change_mode()
 
     def action_update_prices(self) -> None:
         """Update prices for all watchlist tickers from Finnhub API"""
@@ -197,10 +171,11 @@ class IcebergApp(App):
         status = self.query_one("#status_bar", StatusBar)
 
         for i, ticker in enumerate(tickers, 1):
-            # Update progress in status bar
+            # Update progress in status bar (blue)
             self.call_from_thread(
                 status.update_status,
-                f"Updating prices... {i}/{total} ({ticker})"
+                f"Updating prices... {i}/{total} ({ticker})",
+                "blue"
             )
 
             # Fetch quote from Finnhub
@@ -216,6 +191,8 @@ class IcebergApp(App):
 
     def _refresh_after_update(self, success_count: int, total: int) -> None:
         """Refresh UI after price update (called from worker thread)"""
+        from datetime import datetime
+
         # Refresh all widgets that display prices
         watchlist = self.query_one("#watchlist", Watchlist)
         market_indices = self.query_one(MarketIndices)
@@ -230,7 +207,16 @@ class IcebergApp(App):
         # Update current ticker panels
         self.update_panels()
 
-        # Show completion message
-        status.update_status(
-            f"✓ Updated {success_count}/{total} tickers successfully"
-        )
+        # Show completion message with time and color
+        time_str = datetime.now().strftime("%H:%M")
+
+        if success_count == total:
+            # All succeeded - white/default color
+            message = f"Updated {success_count}/{total} at {time_str}"
+            color = None
+        else:
+            # Some failed - red color
+            message = f"Updated {success_count}/{total} at {time_str}"
+            color = "red"
+
+        status.update_status(message, color)
