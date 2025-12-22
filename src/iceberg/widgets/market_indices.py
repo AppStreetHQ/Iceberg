@@ -61,3 +61,7 @@ class MarketIndices(Widget):
                 content = f"{ticker} {format_price(price)}"
 
         self.query_one(f"#index_{ticker}", Static).update(content)
+
+    def refresh_prices(self) -> None:
+        """Refresh prices from database (after API update)"""
+        self.update_indices()

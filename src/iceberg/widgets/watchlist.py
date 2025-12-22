@@ -220,3 +220,23 @@ class Watchlist(Widget):
         self.sort_items()
         self.update_display()
         return self.change_mode
+
+    def refresh_prices(self) -> None:
+        """Refresh prices from database (after API update)"""
+        # Update prices for all items
+        for item in self.items:
+            # Fetch latest and previous prices for daily change
+            latest = self.db.get_latest_price(item.ticker)
+            if latest:
+                item.current_price = latest.close
+
+            prev_close = self.db.get_previous_close(item.ticker)
+            if prev_close:
+                item.previous_close = prev_close
+
+        # Recalculate range-based changes
+        self.calculate_range_changes()
+
+        # Re-sort and update display
+        self.sort_items()
+        self.update_display()

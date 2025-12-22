@@ -5,9 +5,11 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import Header
+from textual.worker import Worker, WorkerState
 
 from .config import Config
 from .data.db import Database
+from .api.finnhub import FinnhubClient
 from .widgets.market_indices import MarketIndices
 from .widgets.ticker_banner import TickerBanner
 from .widgets.watchlist import Watchlist
@@ -31,6 +33,7 @@ class IcebergApp(App):
         Binding("r", "cycle_day_range", "Cycle day range", show=True),
         Binding("s", "toggle_sort", "Toggle sort", show=True),
         Binding("d", "toggle_change_mode", "Toggle day/range", show=True),
+        Binding("u", "update_prices", "Update prices", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
 
@@ -43,6 +46,7 @@ class IcebergApp(App):
         super().__init__()
         self.config = config
         self.db = Database(config.db_path)
+        self.finnhub = FinnhubClient()
         self.day_ranges = [7, 30, 90, 120]
         self.day_range_index = 2  # Start at 90 days
 
@@ -175,3 +179,55 @@ class IcebergApp(App):
         status = self.query_one("#status_bar", StatusBar)
         mode_label = "Daily Change" if change_mode == "day" else f"{self.day_range}d Range Change"
         status.update_status(f"Watchlist showing: {mode_label}")
+
+    def action_update_prices(self) -> None:
+        """Update prices for all watchlist tickers from Finnhub API"""
+        # Run the update in a worker thread to avoid blocking the UI
+        self.run_worker(self._update_prices_worker, thread=True)
+
+    def _update_prices_worker(self) -> None:
+        """Worker thread to fetch and update prices (runs in background)"""
+        watchlist = self.query_one("#watchlist", Watchlist)
+        tickers = [item.ticker for item in watchlist.items]
+
+        total = len(tickers)
+        success_count = 0
+
+        # Update status bar to show progress
+        status = self.query_one("#status_bar", StatusBar)
+
+        for i, ticker in enumerate(tickers, 1):
+            # Update progress in status bar
+            self.call_from_thread(
+                status.update_status,
+                f"Updating prices... {i}/{total} ({ticker})"
+            )
+
+            # Fetch quote from Finnhub
+            quote = self.finnhub.get_quote(ticker)
+
+            if quote:
+                # Insert/update in database
+                if self.db.upsert_from_finnhub_quote(ticker, quote):
+                    success_count += 1
+
+        # Update complete - refresh all widgets
+        self.call_from_thread(self._refresh_after_update, success_count, total)
+
+    def _refresh_after_update(self, success_count: int, total: int) -> None:
+        """Refresh UI after price update (called from worker thread)"""
+        # Refresh all widgets that display prices
+        watchlist = self.query_one("#watchlist", Watchlist)
+        market_indices = self.query_one(MarketIndices)
+
+        watchlist.refresh_prices()
+        market_indices.refresh_prices()
+
+        # Update current ticker panels
+        self.update_panels()
+
+        # Show completion message
+        status = self.query_one("#status_bar", StatusBar)
+        status.update_status(
+            f"✓ Updated {success_count}/{total} tickers successfully"
+        )
