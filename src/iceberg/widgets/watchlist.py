@@ -223,6 +223,9 @@ class Watchlist(Widget):
 
     def refresh_prices(self) -> None:
         """Refresh prices from database (after API update)"""
+        # Remember currently selected ticker before re-sorting
+        selected_ticker = self.get_selected_ticker()
+
         # Update prices for all items
         for item in self.items:
             # Fetch latest and previous prices for daily change
@@ -240,3 +243,11 @@ class Watchlist(Widget):
         # Re-sort and update display
         self.sort_items()
         self.update_display()
+
+        # Restore selection to the same ticker (which may have moved)
+        if selected_ticker:
+            option_list = self.query_one("#ticker_list", OptionList)
+            for idx, item in enumerate(self.items):
+                if item.ticker == selected_ticker:
+                    option_list.highlighted = idx
+                    break

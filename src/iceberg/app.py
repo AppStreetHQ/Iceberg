@@ -81,10 +81,13 @@ class IcebergApp(App):
 
     def update_panels(self) -> None:
         """Update chart and technical panels with current ticker and range"""
-        # Get company name from watchlist
+        # Get company name from watchlist by ticker (not by highlight index)
         watchlist = self.query_one("#watchlist", Watchlist)
-        selected_item = watchlist.get_selected_item()
-        company_name = selected_item.name if selected_item else ""
+        company_name = ""
+        for item in watchlist.items:
+            if item.ticker == self.selected_ticker:
+                company_name = item.name
+                break
 
         # Update ticker banner
         banner = self.query_one("#ticker_banner", TickerBanner)
