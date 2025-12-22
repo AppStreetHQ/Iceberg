@@ -23,7 +23,7 @@ class StatusBar(Widget):
     def update_status(self, message: str = "") -> None:
         """Update status bar content"""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        hints = "[j/k] navigate  [c] chart mode  [r] range  [q] quit"
+        hints = "j/k:nav  c:chart  r:range  s:sort  d:day/range  q:quit"
 
         if message:
             content = f"{message} | {hints}"

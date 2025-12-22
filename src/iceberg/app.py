@@ -20,6 +20,7 @@ class IcebergApp(App):
     """Iceberg Terminal - Bloomberg-style stock market TUI"""
 
     CSS_PATH = "app.tcss"
+    SHOW_FOOTER = False  # Disable built-in footer, we have custom StatusBar
 
     BINDINGS = [
         Binding("j", "watchlist_down", "Next ticker", show=False),
