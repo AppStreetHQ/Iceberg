@@ -43,3 +43,33 @@ def get_change_class(change: Optional[float]) -> str:
     if change is None or change == 0:
         return "neutral"
     return "gain" if change > 0 else "loss"
+
+
+def format_market_cap(market_cap: Optional[float], currency: str = "USD") -> str:
+    """Format market cap with M/B/T suffix and 3 decimal places
+
+    Args:
+        market_cap: Market capitalization value
+        currency: Currency code (e.g., "USD", "EUR")
+
+    Returns:
+        Formatted string like "41.424B USD" or "4.472T USD"
+    """
+    if market_cap is None or market_cap == 0:
+        return "N/A"
+
+    # Determine suffix and divisor
+    if market_cap >= 1_000_000_000_000:  # Trillions
+        value = market_cap / 1_000_000_000_000
+        suffix = "T"
+    elif market_cap >= 1_000_000_000:  # Billions
+        value = market_cap / 1_000_000_000
+        suffix = "B"
+    elif market_cap >= 1_000_000:  # Millions
+        value = market_cap / 1_000_000
+        suffix = "M"
+    else:
+        # Less than a million - show as-is
+        return f"{market_cap:,.0f} {currency}"
+
+    return f"{value:.3f}{suffix} {currency}"

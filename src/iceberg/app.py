@@ -49,6 +49,7 @@ class IcebergApp(App):
         self.finnhub = FinnhubClient()
         self.day_ranges = [7, 30, 90, 120]
         self.day_range_index = 2  # Start at 90 days
+        self.profile_cache = {}  # Cache company profiles by ticker
 
     def compose(self) -> ComposeResult:
         """Create child widgets"""
@@ -74,6 +75,10 @@ class IcebergApp(App):
             self.selected_ticker = first_ticker
             self.update_panels()
 
+        # Initialize banner with date range
+        banner = self.query_one(MarketIndices)
+        banner.update_range(self.day_range, self.selected_ticker)
+
     def on_watchlist_ticker_selected(self, message: Watchlist.TickerSelected) -> None:
         """Handle ticker selection from watchlist"""
         self.selected_ticker = message.ticker
@@ -81,17 +86,42 @@ class IcebergApp(App):
 
     def update_panels(self) -> None:
         """Update chart and technical panels with current ticker and range"""
-        # Get company name from watchlist by ticker (not by highlight index)
+        # Get company name and current price from watchlist
         watchlist = self.query_one("#watchlist", Watchlist)
         company_name = ""
+        current_price = None
         for item in watchlist.items:
             if item.ticker == self.selected_ticker:
                 company_name = item.name
+                current_price = item.current_price
                 break
 
-        # Update ticker banner
+        # Fetch profile data (cached per session)
+        if self.selected_ticker not in self.profile_cache:
+            profile = self.finnhub.get_company_profile(self.selected_ticker)
+            self.profile_cache[self.selected_ticker] = profile
+        else:
+            profile = self.profile_cache[self.selected_ticker]
+
+        # Extract profile data
+        industry = None
+        shares_outstanding = None
+        currency = "USD"
+        if profile:
+            industry = profile.get('finnhubIndustry')
+            shares_outstanding = profile.get('shareOutstanding')
+            currency = profile.get('currency', 'USD')
+
+        # Update ticker banner with profile info
         banner = self.query_one("#ticker_banner", TickerBanner)
-        banner.update_ticker(self.selected_ticker, company_name)
+        banner.update_ticker(
+            self.selected_ticker,
+            company_name,
+            industry,
+            shares_outstanding,
+            current_price,
+            currency
+        )
 
         chart = self.query_one("#chart", ChartPanel)
         technical = self.query_one("#technical", TechnicalPanel)
@@ -137,12 +167,12 @@ class IcebergApp(App):
         self.day_range = self.day_ranges[self.day_range_index]
 
         # Update all panels
-        banner = self.query_one("#ticker_banner", TickerBanner)
+        banner = self.query_one(MarketIndices)
         chart = self.query_one("#chart", ChartPanel)
         technical = self.query_one("#technical", TechnicalPanel)
         watchlist = self.query_one("#watchlist", Watchlist)
 
-        banner.update_range(self.day_range)
+        banner.update_range(self.day_range, self.selected_ticker)
         chart.update_range(self.day_range)
         technical.update_range(self.day_range)
         watchlist.update_range(self.day_range)
@@ -198,11 +228,9 @@ class IcebergApp(App):
 
         # Refresh all widgets that display prices
         watchlist = self.query_one("#watchlist", Watchlist)
-        market_indices = self.query_one(MarketIndices)
         status = self.query_one("#status_bar", StatusBar)
 
         watchlist.refresh_prices()
-        market_indices.refresh_prices()
 
         # Refresh market status as well
         status.refresh_market_status()

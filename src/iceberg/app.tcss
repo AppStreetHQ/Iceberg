@@ -14,21 +14,31 @@ Header {
 /* Market indices banner */
 MarketIndices {
     dock: top;
-    height: 3;
+    height: auto;
+    max-height: 5;
     background: black;
     border-bottom: solid #333333;
-    padding: 1;
+    padding: 1 2;
 }
 
 #indices_container {
     width: 100%;
-    height: 100%;
+    height: auto;
 }
 
-.index_cell {
+.title_cell {
     width: 1fr;
-    content-align: center middle;
+    content-align: left middle;
     padding: 0 1;
+    color: white;
+    text-style: bold;
+}
+
+.range_cell {
+    width: 40;
+    content-align: right middle;
+    padding: 0 1;
+    color: white;
 }
 
 /* Main content area */
@@ -60,14 +70,20 @@ MarketIndices {
     color: white;
     background: black;
     text-style: bold;
-    padding: 1 1 0 1;
+    padding: 1 0 0 0;
 }
 
-#date_range {
+#industry {
+    color: #888888;
+    background: black;
+    padding: 0;
+}
+
+#market_cap {
     color: white;
     background: black;
     text-style: bold;
-    padding: 1 1 0 1;
+    padding: 1 0 0 0;
 }
 
 /* Watchlist panel */

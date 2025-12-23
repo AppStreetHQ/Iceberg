@@ -17,16 +17,18 @@ class MarketIndices(Widget):
         super().__init__(**kwargs)
         self.db = db
         self.indices = indices
+        self.day_range = 90
 
     def compose(self) -> ComposeResult:
-        """Compose indices display"""
+        """Compose banner display"""
         with Horizontal(id="indices_container"):
-            for ticker in self.indices:
-                yield Static("Loading...", id=f"index_{ticker}", classes="index_cell")
+            yield Static("🧊 ICEBERG TERMINAL", id="app_title", classes="title_cell")
+            yield Static("Range: 90d", id="range_display", classes="range_cell")
 
     def on_mount(self) -> None:
-        """Load index data on mount"""
-        self.update_indices()
+        """Initialize banner on mount"""
+        # Initialize range display with dates (use SPY as default ticker for date range)
+        self.update_range(self.day_range, "SPY")
 
     def update_indices(self) -> None:
         """Update all index displays"""
@@ -65,3 +67,24 @@ class MarketIndices(Widget):
     def refresh_prices(self) -> None:
         """Refresh prices from database (after API update)"""
         self.update_indices()
+
+    def update_range(self, day_range: int, ticker: str = "SPY") -> None:
+        """Update the day range display with actual dates
+
+        Args:
+            day_range: Number of days
+            ticker: Ticker to use for date range (defaults to SPY)
+        """
+        self.day_range = day_range
+
+        # Fetch prices to get actual date range
+        prices = self.db.get_daily_prices(ticker, day_range)
+
+        if prices and len(prices) >= 2:
+            start_date = prices[0].trade_date.strftime('%d/%m/%y')
+            end_date = prices[-1].trade_date.strftime('%d/%m/%y')
+            range_text = f"Range: {day_range}d ({start_date} - {end_date})"
+        else:
+            range_text = f"Range: {day_range}d"
+
+        self.query_one("#range_display", Static).update(range_text)
