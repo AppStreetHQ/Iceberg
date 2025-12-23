@@ -5,6 +5,7 @@ from textual.containers import VerticalScroll
 from textual.widget import Widget
 from textual.widgets import Static
 from typing import Optional
+from rich.text import Text
 
 from ..data.db import Database
 from ..analysis.indicators import (
@@ -25,6 +26,7 @@ class TechnicalPanel(Widget):
         self.db = db
         self.current_ticker: Optional[str] = None
         self.current_range: int = 30
+        self.last_analysis_text: Optional[str] = None
 
     def compose(self) -> ComposeResult:
         """Compose technical panel"""
@@ -43,6 +45,10 @@ class TechnicalPanel(Widget):
         self.current_range = day_range
         if self.current_ticker:
             self.render_analysis()
+
+    def get_analysis_text(self) -> Optional[str]:
+        """Get the current analysis text for export"""
+        return self.last_analysis_text
 
     def render_analysis(self) -> None:
         """Render technical analysis"""
@@ -67,18 +73,81 @@ class TechnicalPanel(Widget):
         trend = compute_trend(closes, 20)
         volatility = compute_volatility(closes)
 
-        # Build display
-        lines = [f"═══ {self.current_ticker} Technical Analysis ═══\n"]
+        # Pattern-based rating using indicator combinations
+        macd_bull = macd and macd.bias == MACDBias.BULL
+        macd_bear = macd and macd.bias == MACDBias.BEAR
+        trend_up = trend and trend.bias == TrendBias.UP
+        trend_down = trend and trend.bias == TrendBias.DOWN
+        trend_sideways = trend and trend.bias == TrendBias.SIDEWAYS
+        rsi_overbought = rsi and rsi.bias == RSIBias.OVERBOUGHT
+        rsi_oversold = rsi and rsi.bias == RSIBias.OVERSOLD
+        rsi_strong = rsi and rsi.bias == RSIBias.STRONG
+        rsi_weak = rsi and rsi.bias == RSIBias.WEAK
+        price_above_sma = sma20 and closes and closes[-1] > sma20
+        price_below_sma = sma20 and closes and closes[-1] < sma20
+
+        # Strong Buy: All bullish signals aligned
+        if (macd_bull and trend_up and price_above_sma and (rsi_strong or rsi_oversold)):
+            rating = "STRONG BUY"
+            rating_color = "#00ff00"
+
+        # Buy: Strong bullish momentum
+        elif (macd_bull and trend_up) or \
+             (macd_bull and price_above_sma and not rsi_overbought) or \
+             (trend_up and rsi_oversold and price_above_sma):
+            rating = "BUY"
+            rating_color = "#00ff00"
+
+        # Outperform: Leaning bullish but not all signals
+        elif (macd_bull and trend_sideways) or \
+             (trend_up and not macd_bear) or \
+             (price_above_sma and macd_bull) or \
+             (price_above_sma and trend_up and not macd_bear):
+            rating = "OUTPERFORM"
+            rating_color = "#88ff88"
+
+        # Sell: Strong bearish momentum
+        elif (macd_bear and trend_down) or \
+             (macd_bear and price_below_sma and not rsi_oversold) or \
+             (trend_down and rsi_overbought and price_below_sma):
+            rating = "SELL"
+            rating_color = "#ff0000"
+
+        # Underperform: Leaning bearish but not all signals
+        elif (macd_bear and trend_sideways) or \
+             (trend_down and not macd_bull) or \
+             (price_below_sma and macd_bear) or \
+             (price_below_sma and trend_down and not macd_bull):
+            rating = "UNDERPERFORM"
+            rating_color = "#ff8888"
+
+        # Hold: Mixed or neutral signals
+        else:
+            rating = "HOLD"
+            rating_color = "#888888"
+
+        # Build display using Text object for consistent rendering
+        display = Text()
+
+        # Title
+        display.append(f"{self.current_ticker} - Technical Analysis", style="bold bright_white")
+        display.append("\n\n")
+
+        # Rating
+        display.append("Rating: ")
+        display.append(rating, style=rating_color)
+        display.append("\n\n")
 
         # MACD
         if macd:
             emoji = "🐂" if macd.bias == MACDBias.BULL else "🐻" if macd.bias == MACDBias.BEAR else "➡️"
-            lines.append(
-                f"MACD(12,26,9):   {emoji} {macd.bias.value.title()} "
-                f"(MACD {macd.macd:.2f}, Signal {macd.signal:.2f}, Hist {macd.hist:.2f})"
-            )
+            color = "#00ff00" if macd.bias == MACDBias.BULL else "#ff0000" if macd.bias == MACDBias.BEAR else "#888888"
+            display.append("MACD(12,26,9):   ")
+            display.append(f"{emoji} ", style=color)
+            display.append(macd.bias.value.title(), style=color)
+            display.append(f" (MACD {macd.macd:.2f}, Signal {macd.signal:.2f}, Hist {macd.hist:.2f})\n")
         else:
-            lines.append("MACD(12,26,9):   N/A")
+            display.append("MACD(12,26,9):   N/A\n")
 
         # RSI
         if rsi:
@@ -89,62 +158,93 @@ class TechnicalPanel(Widget):
                 RSIBias.WEAK: "🟠",
                 RSIBias.OVERSOLD: "🔵",
             }
+            color_map = {
+                RSIBias.OVERBOUGHT: "#ff0000",
+                RSIBias.STRONG: "#00ff00",
+                RSIBias.NEUTRAL: "#888888",
+                RSIBias.WEAK: "#ffaa00",
+                RSIBias.OVERSOLD: "#0088ff",
+            }
             emoji = emoji_map.get(rsi.bias, "⚪")
-            lines.append(f"RSI(14):         {emoji} {rsi.value:.1f} - {rsi.bias.value.title()}")
+            color = color_map.get(rsi.bias, "#888888")
+            display.append("RSI(14):         ")
+            display.append(f"{emoji} ", style=color)
+            display.append(f"{rsi.value:.1f}", style=color)
+            display.append(f" - {rsi.bias.value.title()}\n")
         else:
-            lines.append("RSI(14):         N/A")
+            display.append("RSI(14):         N/A\n")
+
+        display.append("\n")  # Spacing
 
         # SMA
-        if sma20:
-            lines.append(f"SMA(20):         ${sma20:.2f}")
+        if sma20 and closes:
+            current_price = closes[-1]
+            if current_price > sma20:
+                sma_emoji = "🟢"
+                sma_color = "#00ff00"
+            else:
+                sma_emoji = "🔴"
+                sma_color = "#ff0000"
+            display.append("SMA(20):         ")
+            display.append(f"{sma_emoji} ", style=sma_color)
+            display.append(f"${sma20:.2f}", style=sma_color)
+            display.append("\n")
         else:
-            lines.append("SMA(20):         N/A")
+            display.append("SMA(20):         N/A\n")
 
         # Trend
         if trend:
-            emoji = "🟢" if trend.bias == TrendBias.UP else "🔴" if trend.bias == TrendBias.DOWN else "🟡"
+            color = "#00ff00" if trend.bias == TrendBias.UP else "#ff0000" if trend.bias == TrendBias.DOWN else "#888888"
             direction = "Up" if trend.bias == TrendBias.UP else "Down" if trend.bias == TrendBias.DOWN else "Sideways"
-            lines.append(
-                f"Trend:           {emoji} {direction} "
-                f"(Last vs SMA: {trend.delta_pct:+.2f}%)"
-            )
+            display.append("Trend:           ")
+            display.append(direction, style=color)
+            display.append(" (Last vs SMA: ")
+            display.append(f"{trend.delta_pct:+.2f}%", style=color)
+            display.append(")\n")
         else:
-            lines.append("Trend:           N/A")
+            display.append("Trend:           N/A\n")
+
+        display.append("\n")  # Spacing
 
         # Volatility
         if volatility:
-            emoji_map = {
-                VolatilityBias.CALM: "🟢",
-                VolatilityBias.CHOPPY: "🟠",
-                VolatilityBias.WILD: "🔴",
+            color_map = {
+                VolatilityBias.CALM: "#00ff00",
+                VolatilityBias.CHOPPY: "#ffaa00",
+                VolatilityBias.WILD: "#ff0000",
             }
-            emoji = emoji_map.get(volatility.bias, "⚪")
-            lines.append(
-                f"Volatility (σ):  {emoji} {volatility.bias.value.title()} "
-                f"(daily σ = {volatility.sigma:.2f}%)"
-            )
+            color = color_map.get(volatility.bias, "#888888")
+            display.append("Volatility:      ")
+            display.append(volatility.bias.value.title(), style=color)
+            display.append(f" (daily σ = {volatility.sigma:.2f}%)\n")
         else:
-            lines.append("Volatility (σ):  N/A")
+            display.append("Volatility:      N/A\n")
 
-        # Direction today
+        display.append("\n")  # Spacing
+
+        # Last price change
         if len(closes) >= 2:
             today = closes[-1]
             yesterday = closes[-2]
             change = today - yesterday
+            change_pct = (change / yesterday * 100) if yesterday != 0 else 0
+
             if change > 0:
-                direction_emoji = "⬆️"
-                direction_text = "Climbing"
+                change_color = "#00ff00"
+                arrow = "▲"
             elif change < 0:
-                direction_emoji = "⬇️"
-                direction_text = "Falling"
+                change_color = "#ff0000"
+                arrow = "▼"
             else:
-                direction_emoji = "➡️"
-                direction_text = "Flat"
+                change_color = "#888888"
+                arrow = "→"
 
-            lines.append(
-                f"Direction today: {direction_emoji}  {direction_text} "
-                f"(${change:+.2f} vs yesterday)"
-            )
+            display.append("Last Change:     ")
+            display.append(f"{arrow} ${abs(change):.2f} ({change_pct:+.2f}%)", style=change_color)
+            display.append("\n")
 
-        display_text = "\n".join(lines)
-        self.query_one("#technical_display", Static).update(display_text)
+        # Store plain text for clipboard export
+        self.last_analysis_text = display.plain
+
+        # Update display with Text object
+        self.query_one("#technical_display", Static).update(display)

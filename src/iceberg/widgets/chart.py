@@ -98,7 +98,7 @@ class ChartPanel(Widget):
         header_text = Text()
         header_text.append(
             f"{self.current_ticker} - {mode_label} ({self.current_range}d)",
-            style="bold white"
+            style="bold bright_white"
         )
 
         # Build stats (below chart)

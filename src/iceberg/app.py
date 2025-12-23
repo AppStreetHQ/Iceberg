@@ -33,6 +33,7 @@ class IcebergApp(App):
         Binding("r", "cycle_day_range", "Cycle day range", show=True),
         Binding("s", "toggle_sort", "Toggle sort", show=True),
         Binding("d", "toggle_change_mode", "Toggle day/range", show=True),
+        Binding("e", "export_ta", "Copy TA", show=True),
         Binding("u", "update_prices", "Update prices", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
@@ -186,6 +187,33 @@ class IcebergApp(App):
         """Toggle between day and range change display"""
         watchlist = self.query_one("#watchlist", Watchlist)
         watchlist.toggle_change_mode()
+
+    def action_export_ta(self) -> None:
+        """Copy technical analysis to clipboard"""
+        import subprocess
+        import re
+
+        technical = self.query_one("#technical", TechnicalPanel)
+
+        # Get the technical analysis text and strip Rich markup
+        ta_text = technical.get_analysis_text()
+        if not ta_text:
+            return
+
+        # Strip Rich markup tags (anything in square brackets)
+        plain_text = re.sub(r'\[.*?\]', '', ta_text)
+
+        # Copy to clipboard (macOS)
+        try:
+            process = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
+            process.communicate(plain_text.encode('utf-8'))
+
+            # Show confirmation in status bar
+            status = self.query_one("#status_bar", StatusBar)
+            status.update_status("Technical analysis copied to clipboard", None)
+        except Exception as e:
+            status = self.query_one("#status_bar", StatusBar)
+            status.update_status(f"Failed to copy: {e}", "red")
 
     def action_update_prices(self) -> None:
         """Update prices for all watchlist tickers from Finnhub API"""

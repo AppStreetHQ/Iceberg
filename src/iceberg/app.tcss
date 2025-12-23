@@ -74,7 +74,7 @@ MarketIndices {
 }
 
 #industry {
-    color: #888888;
+    color: white;
     background: black;
     padding: 0;
 }
