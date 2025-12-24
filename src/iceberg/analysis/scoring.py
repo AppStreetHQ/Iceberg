@@ -835,6 +835,14 @@ def calculate_investment_score(
     if volatility_bias == VolatilityBias.WILD and resilience_count >= 3:
         score += 25
 
+    # 5. Winner's Premium: +40 (v1.4.1)
+    # Rewards consistent excellence - stocks that stay near highs AND are battle-tested
+    # Differentiates "superstar" (MU: 85% near highs, 3 recoveries) from "momentum spike"
+    if closes:
+        return_to_highs = compute_return_to_highs_frequency(closes, 180)
+        if return_to_highs is not None and return_to_highs >= 80 and resilience_count >= 3:
+            score += 40
+
     # ========================================================================
     # PATTERN BONUSES (~135 points) - Opportunity Detection (keep v1.3 logic)
     # ========================================================================
@@ -880,9 +888,9 @@ def calculate_investment_score(
     # Turnaround active if capitulation detected AND price < SMA(50)
     turnaround_active = capitulation_detected and (sma50 is not None and current_price < sma50)
 
-    # Normalize to 0-100 scale (v1.4 max points: ~425)
-    turnaround_normalized = normalize_score(turnaround_score, max_points=425)
-    bau_normalized = normalize_score(bau_score, max_points=425)
+    # Normalize to 0-100 scale (v1.4.1 max points: ~465 with Winner's Premium)
+    turnaround_normalized = normalize_score(turnaround_score, max_points=465)
+    bau_normalized = normalize_score(bau_score, max_points=465)
 
     return ScoreResult(
         turnaround_raw=turnaround_score,
@@ -918,9 +926,9 @@ def get_rating_label(score: int) -> str:
     """
     Convert numeric score to categorical rating.
 
-    Score ranges:
-    - 85-100: STRONG BUY
-    - 70-84: BUY
+    Score ranges (v1.4.1):
+    - 80-100: STRONG BUY (lowered from 85 to reflect quality superstars like MU)
+    - 70-79: BUY
     - 55-69: OUTPERFORM
     - 45-54: HOLD
     - 30-44: UNDERPERFORM
@@ -932,7 +940,7 @@ def get_rating_label(score: int) -> str:
     Returns:
         Rating label string
     """
-    if score >= 85:
+    if score >= 80:
         return "STRONG BUY"
     elif score >= 70:
         return "BUY"
