@@ -17,7 +17,7 @@ class Config:
 
         # Display settings
         self.default_day_range = 30
-        self.chart_height = 15
+        self.chart_height = 20
         self.theme = "dark"
 
         # Market indices to display

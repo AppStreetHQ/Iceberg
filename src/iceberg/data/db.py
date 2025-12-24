@@ -26,20 +26,19 @@ class Database:
             conn.close()
 
     def get_daily_prices(self, ticker: str, days: int) -> List[DailyPrice]:
-        """Fetch last N days of price data for ticker"""
+        """Fetch last N calendar days of price data for ticker"""
         with self.get_connection() as conn:
             query = """
                 SELECT ticker, trade_date, open, high, low, close,
                        adj_close, volume, currency
                 FROM prices_daily
                 WHERE ticker = ?
-                ORDER BY trade_date DESC
-                LIMIT ?
+                AND trade_date >= date('now', '-' || ? || ' days')
+                ORDER BY trade_date ASC
             """
             cursor = conn.execute(query, (ticker, days))
             rows = cursor.fetchall()
-            # Reverse to get oldest to newest
-            return [DailyPrice.from_row(row) for row in reversed(rows)]
+            return [DailyPrice.from_row(row) for row in rows]
 
     def get_latest_price(self, ticker: str) -> Optional[DailyPrice]:
         """Get most recent price for ticker"""

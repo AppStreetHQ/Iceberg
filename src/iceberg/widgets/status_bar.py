@@ -60,7 +60,7 @@ class StatusBar(Widget):
             message: Status message to display
             color: Optional color for the message ('blue', 'red', 'green', etc.)
         """
-        hints = "j/k:nav  c:chart  r:range  s:sort  d:day/range  u:update  q:quit"
+        hints = "j/k:nav  c:chart  r:range  s:sort  d:day/range  e:copy  u:update  q:quit"
         market_info = f"Market: {self.market_status} {self.market_indicator}"
 
         # Build status text with optional color
