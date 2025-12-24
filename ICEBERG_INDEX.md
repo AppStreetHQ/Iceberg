@@ -2,26 +2,29 @@
 
 ## Overview
 
-The Iceberg Score is a proprietary dual-score system designed to evaluate stocks from two distinct perspectives:
+The Iceberg Score is a proprietary dual-score system designed to evaluate stocks from two fundamentally different perspectives:
 
 - **Trade Score (0-100):** Short-term momentum and entry timing for swing traders
-- **Investment Score (0-100):** Long-term trend and value assessment for position holders
+- **Investment Score (0-100):** Quality growth measurement for innovation tech investors (v1.4 redesign)
 
-Both scores use weighted technical indicators but emphasize different timeframes and metrics.
+The scores serve different purposes: Trade asks "Is this good TIMING?" while Investment asks "Is this QUALITY GROWTH worth holding through volatility?"
 
 ## Philosophy
 
 Traditional technical analysis shows individual indicators, but traders need actionable signals. The Iceberg Score synthesizes multiple metrics into clear, numeric scores that answer:
 
-- **Trade Score:** "Should I enter a position NOW?"
-- **Investment Score:** "Is this a quality opportunity for long-term holding?"
+- **Trade Score:** "Should I enter a position NOW?" (timing and momentum)
+- **Investment Score:** "Is this a QUALITY GROWTH company?" (resilience and explosive upside)
 
 ### Why Dual Scores?
 
-Different strategies require different signals:
-- A high-momentum stock (MU) might score **Trade: 85 / Investment: 58** → Great swing trade, risky hold
-- A stable grower on sale might score **Trade: 52 / Investment: 78** → Patient buy, not urgent
-- A perfect setup (NVDA bull run) scores **Trade: 90 / Investment: 88** → Strong buy, any timeframe
+Different strategies require different signals (v1.4 examples):
+- **Unproven speculation** (QBTS): **Trade: 58 / Investment: 65** → Hot momentum, but only 1 recovery (not battle-tested)
+- **Proven resilience** (IONQ): **Trade: 57 / Investment: 70** → Currently consolidating, but 6 recoveries + 123% rally capability (quality)
+- **Superstar excellence** (MU): **Trade: 58 / Investment: 75** → Sideways momentum, but 85.6% of time near highs (consistent winner)
+- **Perfect capitulation setup** (RKLB Nov 21): **Trade: 70 / Investment: 46** → Aggressive swing trade (BUY), cautious hold (HOLD) → +88% actual gain
+
+The scores can diverge significantly because they measure different attributes.
 
 ## Scoring Components
 
@@ -38,35 +41,51 @@ Different strategies require different signals:
 
 **Max Raw Score:** ±100 (with bonus)
 
-### Investment Score Weights (Total: ±80 points)
+### Investment Score Weights (v1.4 - Quality Growth Focus)
 
+**Base Score (~90 points):**
 | Component | Weight | Purpose |
 |-----------|--------|---------|
-| MACD | 15 | Momentum alignment |
-| RSI | 10 | Strength confirmation |
-| SMA(50) Position | 20 | Recent growth baseline (not 200d - optimized for growth stocks) |
-| Trend(50) | 20 | Medium-term trend intact? |
-| Price vs SMA(50) | 15 | Distance from "normal" level |
-| Volatility | ±10 | Wild = risk (-10), Calm = stability (+10) |
-| Recovery Pattern | +15 | Bonus for quality dips |
+| Long-Term Trend (100d) | 25 | Fundamental direction (UP/DOWN/SIDEWAYS) |
+| Resilience | 35 | Recovery patterns (10x increase) - separates quality from pump-and-dump |
+| Growth Rate (1yr) | 30 | Annualized return (100%+ = exceptional, 50%+ = strong, 20%+ = moderate) |
 
-**Max Raw Score:** ±95 (with bonus)
+**Growth Quality Bonuses (~200 points):**
+| Component | Max Bonus | Purpose |
+|-----------|-----------|---------|
+| Rally Magnitude (90d) | 50 | Explosive upside capability (100%+ = innovation growth) |
+| Return to Highs Frequency | 40 | "Winners stay winning" (50%+ time near highs) |
+| Trend Slope (100d) | 30 | Steepness of growth (100%+ annualized = exceptional) |
+| Volatility + Resilience Combo | 25 | High vol OK if recovers (innovation characteristic) |
+| Winner's Premium (v1.4.1) | 40 | Consistent excellence (80%+ near highs + 3+ recoveries) |
+
+**Pattern Bonuses (v1.3 logic retained):**
+| Pattern | Bonus | Purpose |
+|---------|-------|---------|
+| Proven Winner Capitulation | 60 × 1.2 | Extreme dip on proven winner (CAUTIOUS for investors) |
+| Post-Shock Recovery | 60 × 1.2 | Recovery after sharp drop with historical strength |
+| Cheap on a Winner | 15 | Quality stock on temporary pullback |
+
+**Max Raw Score:** ~465 points (v1.4.1 with Winner's Premium)
+**Target stocks:** Innovation tech (Mag 7, space, quantum, AI) - NVDA, RKLB, IONQ, QBTS
 
 ## Component Scoring Details
 
 ### MACD (Moving Average Convergence Divergence)
-- **Bull** (Histogram > 0): Trade +25, Investment +15
-- **Neutral** (Histogram ≈ 0): Trade 0, Investment 0
-- **Bear** (Histogram < 0): Trade -25, Investment -15
+**Trade Score only** (removed from Investment Score in v1.4):
+- **Bull** (Histogram > 0): +25
+- **Neutral** (Histogram ≈ 0): 0
+- **Bear** (Histogram < 0): -25
 
 ### RSI (Relative Strength Index, 14-period)
-- **Oversold** (<30): Trade +15, Investment +15 (buying opportunity)
-- **Weak** (30-40): Trade -10, Investment -10
-- **Neutral** (40-60): Trade 0, Investment 0
-- **Strong** (60-70): Trade +10, Investment +10
-- **Overbought** (>70): Trade -15, Investment -15 (sell signal)
+**Trade Score only** (removed from Investment Score in v1.4):
+- **Oversold** (<30): +15 (buying opportunity)
+- **Weak** (30-40): -10
+- **Neutral** (40-60): 0
+- **Strong** (60-70): +10
+- **Overbought** (>70): -15 (sell signal)
 
-### SMA Position
+### SMA Position (Trade Score only)
 Measures price distance from moving average, capped at weight limit.
 
 **Trade Score - SMA(10):**
@@ -75,37 +94,27 @@ Score = (Price - SMA(10)) / SMA(10) × 100
 Capped at: ±20 points
 ```
 
-**Investment Score - SMA(50):**
-```
-Score = (Price - SMA(50)) / SMA(50) × 100
-Capped at: ±20 points
-```
-
 ### Trend Direction
-Compares current price to SMA (same period as above).
 
 **Trade - Trend(10):**
 - Up (>+2% above SMA): +20
 - Sideways (-2% to +2%): 0
 - Down (<-2% below SMA): -20
 
-**Investment - Trend(50):**
-- Up (>+2% above SMA): +20
+**Investment - Long-Term Trend(100) - v1.4:**
+- Up (>+2% above SMA): +25
 - Sideways (-2% to +2%): 0
-- Down (<-2% below SMA): -20
+- Down (<-2% below SMA): -25
 
 ### Volatility
-Daily standard deviation of returns.
 
 **Trade Score:**
 - Calm (<1%): +5 (stable entry)
 - Choppy (1-3%): 0
 - Wild (>3%): +5 (opportunity in volatility)
 
-**Investment Score:**
-- Calm (<1%): +10 (low risk)
-- Choppy (1-3%): 0
-- Wild (>3%): -10 (high risk)
+**Investment Score - v1.4:**
+Volatility alone is NOT scored. Instead, **Volatility + Resilience Combo** (+25) rewards high volatility IF the stock has proven resilience (3+ recoveries). This reflects innovation growth characteristics.
 
 ### Recovery Pattern Bonus
 
@@ -126,6 +135,59 @@ Then:
 
 **Use Case:** High-growth stocks (RKLB, NVDA) that have temporary setbacks but fundamentals remain strong. Catches multiple re-entry opportunities as the stock oscillates.
 
+### Resilience (Investment Score v1.4)
+
+Counts recovery patterns over 6-month lookback - separates quality from pump-and-dump.
+
+**Scoring:**
+- 5+ recoveries: +35 (battle-tested innovation company)
+- 3-4 recoveries: +25 (proven resilience)
+- 1-2 recoveries: +15 (emerging pattern)
+- 0 recoveries: +0 (unproven)
+
+**What counts as recovery:** Price drops below SMA(50), then recovers back above with upward momentum (SMA10 > price).
+
+**Use Case:** IONQ with 6 recoveries scores higher than QBTS with 1 recovery, even if QBTS has bigger rally magnitude.
+
+### Innovation Growth Indicators (Investment Score v1.4)
+
+**Rally Magnitude (90-day lookback):**
+Measures largest trough-to-peak gain - explosive upside capability.
+- 100%+ rally: +50 (innovation growth characteristic)
+- 50-99% rally: +30 (strong upside)
+- 30-49% rally: +15 (moderate)
+- Example: QBTS +202% rally, IONQ +123% rally
+
+**Growth Rate (1-year annualized):**
+Overall return over past year.
+- 100%+ growth: +30 (exceptional)
+- 50-99% growth: +20 (strong)
+- 20-49% growth: +10 (moderate)
+- 0-19% growth: +5 (slow)
+- Negative growth: -15 (declining)
+- Example: RKLB +203% growth
+
+**Return to Highs Frequency (180-day lookback):**
+Percentage of time spent within 10% of rolling 20-day high - "winners stay winning".
+- 50%+ near highs: +40 (consistent excellence)
+- 30-49% near highs: +20 (moderate strength)
+- <30% near highs: +0 (choppy/declining)
+- Example: MU 85.6% near highs (superstar consistency)
+
+**Trend Slope (100-day linear regression):**
+Annualized steepness of price trajectory.
+- 100%+ slope: +30 (steep growth)
+- 50-99% slope: +20 (strong growth)
+- 20-49% slope: +10 (moderate growth)
+- <20% slope: +0 (flat/declining)
+- Example: MU +224% slope (exceptional steepness)
+
+**Winner's Premium (v1.4.1):**
+Rewards sustained excellence - consistency + resilience gate.
+- If return_to_highs >= 80% AND resilience >= 3: +40
+- Differentiates superstars (MU) from untested momentum spikes
+- Resilience gate prevents chasing unproven winners
+
 ## Score Normalization
 
 Raw scores are normalized to 0-100 scale for consistency.
@@ -135,28 +197,30 @@ Raw scores are normalized to 0-100 scale for consistency.
 Score = ((RawScore + MaxPoints) / (MaxPoints × 2)) × 100
 ```
 
-**Trade Score:**
+**Trade Score (v1.3):**
 ```
-Score = ((RawScore + 100) / 200) × 100
+Max Points: 395 (includes capitulation bonus)
+Score = ((RawScore + 395) / 790) × 100
 ```
 
-**Investment Score:**
+**Investment Score (v1.4.1):**
 ```
-Score = ((RawScore + 95) / 190) × 100
+Max Points: 465 (includes Winner's Premium)
+Score = ((RawScore + 465) / 930) × 100
 ```
 
 ## Categorical Ratings
 
 Scores map to traditional ratings:
 
-| Score Range | Rating |
-|-------------|--------|
-| 85-100 | STRONG BUY |
-| 70-84 | BUY |
-| 55-69 | OUTPERFORM |
-| 45-54 | HOLD |
-| 30-44 | UNDERPERFORM |
-| 0-29 | SELL |
+| Score Range | Rating | Notes |
+|-------------|--------|-------|
+| 80-100 | STRONG BUY | Lowered from 85 in v1.4.1 - more flexible paths |
+| 70-79 | BUY | High confidence |
+| 55-69 | OUTPERFORM | Above average |
+| 45-54 | HOLD | Neutral |
+| 30-44 | UNDERPERFORM | Below average |
+| 0-29 | SELL | Weak/declining |
 
 ## Example Calculations
 
@@ -817,26 +881,67 @@ Uses `display_score` property (turnaround if active, else BAU) to show what user
 ## Limitations
 
 1. **No fundamental data** - relies purely on price/volume behavior
-2. **Trade/Investment distinction** - both still use technical indicators, not fundamentally different purposes
+2. ~~**Trade/Investment distinction** - both still use technical indicators, not fundamentally different purposes~~ **RESOLVED in v1.4** - now serve fundamentally different purposes (timing vs quality)
 3. **Rare pattern** - very few stocks meet all five capitulation criteria
 4. **Backward-looking** - can't predict if bottom is truly in
 5. **Volatility timing** - even BUY signal can experience continued drawdown
+6. **Growth stock bias (v1.4)** - Investment Score optimized for high-growth innovation tech, may undervalue stable dividend stocks
 
 ## Open Questions
 
 **Should Trade and Investment scores measure different things entirely?**
 
-Currently both use technical indicators (MACD, RSI, SMAs, trends) with different weights and timeframes. This is calibration, not fundamentally different purposes.
+~~Currently both use technical indicators (MACD, RSI, SMAs, trends) with different weights and timeframes. This is calibration, not fundamentally different purposes.~~
 
-Potential evolution:
-- Trade Score: Keep as timing/momentum signal
-- Investment Score: Measure business quality (resilience, consistency, drawdown resistance, time above SMA100)
+**ANSWERED in v1.4** (2024-12-24):
 
-Without fundamental data, can we infer "investment quality" from price behavior alone?
+**Trade Score:** Timing and momentum (unchanged from v1.3)
+- Asks: "Is this good TIMING for entry/exit?"
+- Focus: Short-term momentum, pattern detection, swing trade setups
+- Target: Capitalize on volatility and reversals
+
+**Investment Score:** Quality growth measurement (complete redesign)
+- Asks: "Is this a QUALITY GROWTH company worth holding through volatility?"
+- Focus: Resilience (10x weight increase), explosive upside capability, sustained excellence
+- Target: Innovation tech stocks (Mag 7, space, quantum, AI)
+- Key insight: High volatility + resilience = quality growth (not stability)
+
+**Differentiation achieved through price behavior alone:**
+- Rally Magnitude: Separates explosive growth from linear grind
+- Return to Highs Frequency: Identifies "winners stay winning"
+- Resilience: Counts recovery patterns (battle-tested vs pump-and-dump)
+- Volatility + Resilience Combo: High vol OK if stock recovers (innovation characteristic)
+
+v1.4 proves investment quality CAN be inferred from price behavior without fundamental data.
 
 ---
 
 ## Version History
+
+### v1.4.1 - 2024-12-24
+- **Winner's Premium:** +40 bonus for consistent excellence (>80% near highs + 3+ recoveries)
+- **STRONG BUY threshold lowered:** 85 → 80 (more flexible paths to top rating)
+- **Philosophy:** Recognize superstars (MU: 85.6% near highs) without chasing untested momentum
+- **Resilience gate:** Winner's Premium requires 3+ recoveries to avoid momentum-chasing
+- **Max points updated:** Investment 465 (was 425)
+- **Test results:** MU 75 (BUY), IONQ 70 (BUY), RKLB 66, QBTS 65, NVDA 57
+
+### v1.4 - 2024-12-24
+- **Complete Investment Score redesign:** Fundamentally different purpose from Trade Score
+- **Philosophy shift:** Investment asks "Is this QUALITY GROWTH?" not "Is this good timing?"
+- **Target stocks:** Innovation tech (Mag 7, space, quantum, AI) - NVDA, RKLB, IONQ, QBTS
+- **4 new growth indicators:**
+  - Rally Magnitude: Explosive upside capability (QBTS +202%, IONQ +123%)
+  - Growth Rate: 1-year annualized return (RKLB +203%)
+  - Return to Highs Frequency: "Winners stay winning" metric (MU 85.6%)
+  - Trend Slope: Steepness of growth trajectory (MU +224%)
+- **Resilience 10x weight increase:** 3.5 → 35 points (separates quality from pump-and-dump)
+- **Growth quality bonuses:** Rally magnitude (+50), Return to highs (+40), Trend slope (+30), Vol+Resilience combo (+25)
+- **Max points updated:** Investment 425 (was 255)
+- **Base score focus:** Long-term trend (25), Resilience (35), Growth rate (30)
+- **Trade Score unchanged:** Still optimized for timing/momentum (v1.3 logic)
+- **IONQ validation:** 72 (BUY) with 6 recoveries + +123% rally (quality growth)
+- **QBTS comparison:** 66 (OUTPERFORM) with 1 recovery + +202% rally (unproven speculation)
 
 ### v1.3 - 2024-12-24
 - **Turnaround Rating System:** Dual-score architecture (Turnaround + BAU) for extreme setups
@@ -877,7 +982,8 @@ Without fundamental data, can we infer "investment quality" from price behavior 
 
 ---
 
-**See Implementation:** `src/iceberg/analysis/scoring.py` (v1.3 - dual-score architecture)
-**See Indicators:** `src/iceberg/analysis/indicators.py` (resilience, distance from high, long-term trend)
-**See Diagnostics:** `src/iceberg/analysis/diagnose.py` (investigate specific dates, turnaround display)
-**See Backtesting:** `src/iceberg/analysis/backtest.py` (historical validation)
+**See Implementation:**
+- `src/iceberg/analysis/scoring.py` (v1.4.1 - quality growth investment score, dual-score architecture)
+- `src/iceberg/analysis/indicators.py` (v1.4 - innovation growth indicators: rally magnitude, growth rate, return to highs, trend slope, resilience)
+- `src/iceberg/analysis/diagnose.py` (investigate specific dates, turnaround display, v1.4 growth metrics)
+- `src/iceberg/analysis/backtest.py` (historical validation)
