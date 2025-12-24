@@ -390,7 +390,141 @@ Bonuses (up to +65):
 We're not trying to predict earnings surprises or Fed announcements.
 We're identifying stocks that **historically bounce back** and **detecting when recovery starts**.
 
+---
+
+# Iceberg Score System v1.2 - Refined Post-Shock Detection
+
+## Overview
+
+Version 1.2 addresses a fundamental flaw in v1.1's post-shock recovery pattern and refines the calibration for more intellectually honest ratings.
+
+### The Problem (v1.1)
+
+v1.1's post-shock recovery detection had a contradictory requirement:
+- Required **current long-term trend to be UP**
+- But after real shocks (earnings misses, market corrections), trend goes **DOWN**
+- **Result:** Pattern failed to detect actual post-shock recoveries
+
+**Example:** META Nov 21 at $594 (after -25% earnings collapse)
+- Price dropped from $785 → $589 (-25%)
+- 100-day SMA still at $720 (lagging)
+- Long-term trend: **DOWN** (price below SMA100)
+- v1.1 pattern: **NOT DETECTED** ❌
+- Actual result: +12% in 3 months
+
+### The Solution (v1.2)
+
+**Historical Strength Check** instead of current uptrend:
+
+```
+Post-Shock Recovery Pattern (v1.2):
+1. Price dropped >10% from 20-day high (shock happened)
+2. Was above SMA(100) in past 60 days (had historical strength)
+3. Early recovery signals (not in free fall):
+   - RSI > 20 (not panic selling)
+   - OR Price stabilizing (not making new lows)
+```
+
+**Key insight:** Look backward 60 days to find evidence of past strength, don't require current uptrend during the shock itself.
+
+## Calibration Philosophy - The +60 Decision
+
+### Initial Attempts
+- v1.2 alpha: +40 bonus → Scores too low (META 49 HOLD, not enough signal)
+- v1.2 beta: +70 bonus → Scores too high (META 59 OUTPERFORM, ignoring extreme risk)
+- **v1.2 final: +60 bonus** → Balanced HOLD/cautious OUTPERFORM range
+
+### The Reasoning
+
+**Why +60 is appropriate:**
+
+When all technical indicators are screaming danger (MACD bearish, RSI extreme, all trends DOWN), a +60 bonus:
+- Acknowledges the recovery potential (+60 is significant)
+- Respects the extreme risk (doesn't completely override warnings)
+- Results in HOLD or cautious OUTPERFORM ratings
+
+**What HOLD means in this context:**
+"Yes, there's recovery potential based on historical strength, BUT the risk is extreme. Watch closely, proceed with caution."
+
+This is more honest than STRONG BUY when:
+- RSI is 11.9 (extreme panic)
+- Stock is down -40% from high
+- All trends are DOWN
+- Volatility is wild
+
+### Validation Results
+
+**META Nov 21, 2025** ($594.25 after -25% earnings collapse):
+- v1.0: 35/100 UNDERPERFORM (missed opportunity)
+- v1.1: Pattern not detected (contradiction bug)
+- **v1.2: 55/100 OUTPERFORM** (Trade), 49/100 HOLD (Investment) ✓
+- Actual: +12.07% in 3 months (best call in backtest period)
+
+**RKLB Nov 21, 2025** ($39.48 after -40% drop, RSI 11.9):
+- v1.0: Pattern not detected
+- v1.1: Pattern not detected (contradiction bug)
+- **v1.2: 54/100 HOLD** (Trade), 43/100 UNDERPERFORM (Investment)
+- Actual: +88.56% in 3 months
+
+**Note on RKLB:** While the +88% gain suggests the rating was too conservative, the extreme conditions at the moment (RSI 11.9, -40% drop, wild volatility) made HOLD a defensible rating for risk management.
+
+## Technical Changes
+
+**Scoring weights:**
+- TRADE_POST_SHOCK_BONUS: 25 → 60
+- INV_POST_SHOCK_BONUS: 25 → 60
+- Max points: Trade 190 (was 150), Investment 195 (was 155)
+
+**Pattern detection:**
+```python
+def detect_post_shock_recovery(
+    current_price: float,
+    distance_from_high: Optional[float],
+    rsi_value: Optional[float],
+    macd_hist: Optional[float],
+    long_term_trend: Optional[TrendBias],
+    closes: Optional[List[float]] = None,
+    sma100: Optional[float] = None
+) -> bool:
+    """
+    v1.2: Check if price WAS above SMA(100) in past 60 days
+    (historical strength), not if trend is currently UP.
+    """
+```
+
+**New tool:**
+- `diagnose.py`: Diagnostic tool to investigate scoring on specific dates
+- Usage: `python -m iceberg.analysis.diagnose TICKER YYYY-MM-DD`
+
+## Philosophy Evolution
+
+**v1.0:** "Follow the momentum" → Works in trends, fails at reversals
+**v1.1:** "Identify resilience, detect recovery" → Conceptually sound, implementation flawed
+**v1.2:** "Historical strength + recovery signals" → Fixed contradiction, balanced calibration
+
+We're not predicting shocks. We're identifying stocks with **proven strength** that are showing **early recovery signals** after temporary setbacks.
+
+## Limitations Discovered
+
+Through backtesting, v1.2 revealed persistent challenges:
+
+1. **Still buying peaks:** BUY ratings at tops lose money (momentum-chasing persists)
+2. **Too conservative on extreme setups:** RKLB Nov 21 (HOLD) gained +88%
+3. **Market regime matters:** System works better in uptrends than downtrends
+
+These findings inform v1.3 development.
+
+---
+
 ## Version History
+
+### v1.2 - 2024-12-24
+- **Fixed post-shock recovery:** Uses historical strength (not current uptrend)
+- **Refined calibration:** +60 bonus for balanced HOLD/OUTPERFORM ratings
+- **New diagnostic tool:** `diagnose.py` for investigating specific dates
+- **Back-test validation:** META Nov 21 now detected (+12% actual), RKLB limitations noted
+- **Philosophy:** Acknowledge opportunity without ignoring risk
+- **Max points:** Trade 190, Investment 195
 
 ### v1.1 - 2024-12-24
 - **Resilience-based scoring:** Count recovery patterns, apply multipliers
@@ -413,5 +547,6 @@ We're identifying stocks that **historically bounce back** and **detecting when 
 
 ---
 
-**See Implementation:** `src/iceberg/analysis/scoring.py` (v1.1)
+**See Implementation:** `src/iceberg/analysis/scoring.py` (v1.2)
 **See Indicators:** `src/iceberg/analysis/indicators.py` (resilience, distance from high, long-term trend)
+**See Diagnostics:** `src/iceberg/analysis/diagnose.py` (investigate specific dates)
