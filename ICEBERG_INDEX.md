@@ -222,6 +222,101 @@ Scores map to traditional ratings:
 | 30-44 | UNDERPERFORM | Below average |
 | 0-29 | SELL | Weak/declining |
 
+## Tools and Usage
+
+The Iceberg Score System includes diagnostic and validation tools for analyzing stocks and validating scoring accuracy.
+
+### Diagnostic Tool (diagnose.py)
+
+Investigates scoring for a specific ticker on a specific date, showing detailed breakdown of all indicators, pattern detection, and scoring calculations.
+
+**Usage:**
+```bash
+python -m iceberg.analysis.diagnose TICKER YYYY-MM-DD
+```
+
+**Examples:**
+```bash
+# Investigate META on November 21, 2024
+python -m iceberg.analysis.diagnose META 2024-11-21
+
+# Analyze RKLB scoring on December 19, 2025
+python -m iceberg.analysis.diagnose RKLB 2025-12-19
+
+# Check MU's current scoring
+python -m iceberg.analysis.diagnose MU 2025-12-21
+```
+
+**Output includes:**
+- **Price data**: Current price, previous close, 1-day change
+- **Technical indicators**: MACD, RSI, SMAs, Trends, Volatility
+- **Innovation Growth Metrics (v1.4)**: Rally magnitude, Growth rate, Return to highs frequency, Trend slope
+- **Pattern detection**: Recovery, Post-shock recovery, Proven winner capitulation, Cheap on winner
+- **Detailed scoring**: Shows both turnaround and BAU scores with raw values, explains why patterns triggered or failed
+- **Rating output**: Final scores with categorical ratings
+
+**Use cases:**
+- Debug why a stock received a particular score
+- Understand which patterns are triggering on a specific date
+- Validate scoring logic against historical events
+- Compare scoring across different dates to track changes
+
+### Backtest Tool (backtest.py)
+
+Validates historical accuracy of Trade and Investment scores by calculating scores at regular intervals and measuring forward returns.
+
+**Usage:**
+```bash
+python -m iceberg.analysis.backtest TICKER [MONTHS]
+```
+
+**Examples:**
+```bash
+# Test RKLB over past 6 months (default)
+python -m iceberg.analysis.backtest RKLB
+
+# Test MU over past 12 months
+python -m iceberg.analysis.backtest MU 12
+
+# Test NVDA over past 3 months
+python -m iceberg.analysis.backtest NVDA 3
+```
+
+**How it works:**
+1. **Weekly intervals**: Calculates scores at 7-day intervals over the test period
+2. **No look-ahead bias**: Only uses data available BEFORE each test date (simulates real-time scoring)
+3. **Forward returns**: Measures actual returns at 2-week, 1-month, and 3-month horizons
+4. **Rating validation**: Shows win rate and average return for each rating tier
+5. **Uses display scores**: Shows turnaround score if active, otherwise BAU (what user would have actually seen)
+
+**Output includes:**
+- **Period summary**: Date range, number of test points
+- **Trade Score analysis**: Win rate and average return by rating (STRONG BUY, BUY, OUTPERFORM, HOLD, etc.)
+- **Investment Score analysis**: Same metrics for Investment score
+- **Overall statistics**: Average returns across all test points for 2w/1m/3m horizons
+- **Best/worst calls**: Highlights best and worst scoring decisions with actual outcomes
+
+**Reading the results:**
+```
+Rating          Count    2-Week              1-Month             3-Month
+BUY             12       75.0% (+4.2%)       66.7% (+8.5%)       83.3% (+15.2%)
+                         ↑                   ↑                   ↑
+                    Win rate (% positive)  Average return
+```
+
+**Use cases:**
+- Validate v1.4/v1.4.1 changes against historical data
+- Compare Trade vs Investment score accuracy
+- Identify which rating tiers are most reliable
+- Measure average returns for different holding periods
+- Find best and worst historical calls to understand edge cases
+
+**Important notes:**
+- Backtest uses the CURRENT scoring algorithm on historical data (not how it was scored at the time)
+- Useful for validating algorithm changes, not for predicting future performance
+- Weekend/holiday gaps handled automatically (uses nearest prior trading day)
+- Returns are percentage-based (0.053 = 5.3% gain)
+
 ## Example Calculations
 
 ### RKLB - Growth Stock Recovery
