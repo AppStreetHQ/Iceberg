@@ -312,3 +312,152 @@ def compute_long_term_trend(closes: List[float], period: int = 100) -> Optional[
     """
     trend = compute_trend(closes, period)
     return trend.bias if trend else None
+
+
+# ============================================================================
+# v1.4 INNOVATION GROWTH INDICATORS
+# ============================================================================
+
+def compute_rally_magnitude(closes: List[float], lookback_days: int = 90) -> Optional[float]:
+    """
+    Calculate the largest rally (trough-to-peak gain %) in recent period.
+
+    Identifies explosive upside capability - key for growth tech stocks.
+
+    Args:
+        closes: Closing prices (oldest to newest)
+        lookback_days: Days to look back (default 90)
+
+    Returns:
+        Maximum rally percentage or None if insufficient data
+    """
+    if len(closes) < lookback_days:
+        lookback_days = len(closes)
+
+    if lookback_days < 10:
+        return None
+
+    lookback = closes[-lookback_days:]
+    max_rally_pct = 0.0
+
+    # Find largest trough-to-peak rally
+    for i in range(len(lookback)):
+        trough = lookback[i]
+        # Look for peak after this trough
+        if i < len(lookback) - 1:
+            peak = max(lookback[i+1:])
+            rally_pct = ((peak - trough) / trough) * 100 if trough > 0 else 0
+            max_rally_pct = max(max_rally_pct, rally_pct)
+
+    return max_rally_pct
+
+
+def compute_growth_rate(closes: List[float], period_days: int = 252) -> Optional[float]:
+    """
+    Calculate annualized growth rate over specified period.
+
+    Measures overall growth trajectory - separates high-growth from slow-growth.
+
+    Args:
+        closes: Closing prices (oldest to newest)
+        period_days: Days to measure (default 252 = 1 year)
+
+    Returns:
+        Annualized growth rate percentage or None if insufficient data
+    """
+    if len(closes) < period_days:
+        return None
+
+    start_price = closes[-period_days]
+    end_price = closes[-1]
+
+    if start_price <= 0:
+        return None
+
+    growth_rate = ((end_price - start_price) / start_price) * 100
+    return growth_rate
+
+
+def compute_return_to_highs_frequency(closes: List[float], lookback_days: int = 180) -> Optional[float]:
+    """
+    Calculate percentage of time spent near 52-week high.
+
+    Measures "winners stay winning" - quality stocks recover to highs repeatedly.
+
+    Args:
+        closes: Closing prices (oldest to newest)
+        lookback_days: Days to analyze (default 180)
+
+    Returns:
+        Percentage of days within 10% of rolling high or None
+    """
+    if len(closes) < lookback_days:
+        lookback_days = len(closes)
+
+    if lookback_days < 20:
+        return None
+
+    lookback = closes[-lookback_days:]
+    days_near_high = 0
+
+    # For each day, check if within 10% of the rolling high up to that point
+    for i in range(20, len(lookback)):  # Need 20 days for meaningful high
+        rolling_high = max(lookback[max(0, i-20):i+1])
+        current = lookback[i]
+
+        if current >= rolling_high * 0.90:  # Within 10% of high
+            days_near_high += 1
+
+    total_days = len(lookback) - 20
+    frequency_pct = (days_near_high / total_days) * 100 if total_days > 0 else 0
+
+    return frequency_pct
+
+
+def compute_trend_slope(closes: List[float], period: int = 100) -> Optional[float]:
+    """
+    Calculate linear regression slope of price trend.
+
+    Measures steepness of uptrend - steeper = higher growth rate.
+
+    Args:
+        closes: Closing prices (oldest to newest)
+        period: Days to analyze
+
+    Returns:
+        Annualized slope percentage or None if insufficient data
+    """
+    if len(closes) < period:
+        period = len(closes)
+
+    if period < 20:
+        return None
+
+    lookback = closes[-period:]
+
+    # Simple linear regression
+    n = len(lookback)
+    x = list(range(n))
+    y = lookback
+
+    # Calculate slope: (n*Σxy - Σx*Σy) / (n*Σx² - (Σx)²)
+    sum_x = sum(x)
+    sum_y = sum(y)
+    sum_xy = sum(x[i] * y[i] for i in range(n))
+    sum_x_sq = sum(xi * xi for xi in x)
+
+    denominator = n * sum_x_sq - sum_x * sum_x
+    if denominator == 0:
+        return None
+
+    slope = (n * sum_xy - sum_x * sum_y) / denominator
+
+    # Convert to annualized percentage
+    avg_price = sum_y / n
+    if avg_price == 0:
+        return None
+
+    # slope is in points per day, convert to annualized %
+    annualized_slope_pct = (slope * 252 / avg_price) * 100
+
+    return annualized_slope_pct

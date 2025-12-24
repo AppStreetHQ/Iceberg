@@ -724,72 +724,121 @@ def calculate_investment_score(
     distance_from_high: Optional[float] = None,
     resilience_count: int = 0,
     closes: Optional[List[float]] = None
-) -> Tuple[int, int]:
+) -> ScoreResult:
     """
-    Calculate Investment Score (0-100) for long-term holding signals (v1.1).
+    Calculate Investment Score (0-100) for innovation growth company quality (v1.4).
 
-    Emphasizes trend strength and value opportunities with resilience awareness.
+    Measures "Is this a quality growth stock worth holding through volatility?"
+    Targets: NVDA (core), RKLB (growth), IONQ (satellite), space/quantum/AI innovation plays.
+
+    Key differentiators from Trade Score:
+    - Trade asks: "Is this good TIMING?" (momentum, entry precision)
+    - Investment asks: "Is this a QUALITY GROWTH company?" (resilience, explosive upside)
 
     Args:
         current_price: Current stock price
-        macd_bias: MACD indicator bias
-        macd_hist: MACD histogram value
-        rsi_value: RSI value (0-100)
-        rsi_bias: RSI indicator bias
-        sma10: 10-day simple moving average
-        sma20: 20-day simple moving average
-        sma50: 50-day simple moving average
-        sma100: 100-day simple moving average
-        trend10_bias: 10-day trend bias
-        trend50_bias: 50-day trend bias
+        closes: Price history (required for v1.4 growth metrics)
         long_term_trend: 100-day trend bias
         volatility_bias: Volatility indicator bias
-        distance_from_high: % below 20-day high (negative)
-        resilience_count: Number of recovery patterns in past 6 months
-        closes: Price history for additional calculations (optional)
+        resilience_count: Number of recovery patterns (CRITICAL in v1.4)
+        sma50, sma100: Long-term moving averages
+        distance_from_high: % below 20-day high
+        Other params: Used for pattern detection
 
     Returns:
-        Tuple of (raw_score, normalized_score_0_100)
+        ScoreResult with turnaround and BAU scores
     """
+    # Import v1.4 growth indicators
+    from .indicators import (
+        compute_rally_magnitude,
+        compute_growth_rate,
+        compute_return_to_highs_frequency,
+        compute_trend_slope
+    )
+
     score = 0
 
-    # MACD alignment
-    score += score_macd(macd_bias, INV_MACD_WEIGHT)
+    # ========================================================================
+    # BASE SCORE (~90 points) - Innovation Growth Foundations
+    # ========================================================================
 
-    # RSI confirmation (context-aware)
-    rsi_score, rsi_bonus = score_rsi_contextual(
-        rsi_value, rsi_bias, long_term_trend, INV_RSI_WEIGHT
-    )
-    score += rsi_score
-    score += rsi_bonus
+    # 1. Long-Term Trend (100d): 25 points
+    if long_term_trend == TrendBias.UP:
+        score += 25
+    elif long_term_trend == TrendBias.DOWN:
+        score -= 25
 
-    # SMA(50) position (recent growth baseline)
-    if sma50:
-        score += score_sma_position(current_price, sma50, INV_SMA50_WEIGHT)
+    # 2. Resilience: 35 points (CRITICAL - 10x weight increase from v1.3)
+    # Separates real innovation companies from pump-and-dumps
+    if resilience_count >= 5:
+        score += 35
+    elif resilience_count >= 3:
+        score += 25
+    elif resilience_count >= 1:
+        score += 15
 
-    # Trend(50) direction
-    score += score_trend(trend50_bias, INV_TREND50_WEIGHT)
+    # 3. Growth Rate (1yr): 30 points
+    if closes and len(closes) >= 252:
+        growth_rate = compute_growth_rate(closes, 252)
+        if growth_rate is not None:
+            if growth_rate >= 100:
+                score += 30
+            elif growth_rate >= 50:
+                score += 20
+            elif growth_rate >= 20:
+                score += 10
+            elif growth_rate > 0:
+                score += 5
+            else:
+                score -= 15  # Penalize negative growth
 
-    # Price vs SMA(50) additional weight (distance from normal)
-    if sma50:
-        score += score_sma_position(current_price, sma50, INV_PRICE_VS_SMA50_WEIGHT)
+    # ========================================================================
+    # GROWTH QUALITY BONUSES (~200 points) - Innovation Characteristics
+    # ========================================================================
 
-    # Volatility (risk, resilience-aware)
-    score += score_volatility_resilient(
-        volatility_bias, resilience_count, INV_VOLATILITY_WEIGHT, 'investment'
-    )
+    # 1. Rally Magnitude: up to +50
+    # Measures explosive upside capability (IONQ +900%, NVDA +200% years)
+    if closes:
+        rally_magnitude = compute_rally_magnitude(closes, 90)
+        if rally_magnitude is not None:
+            if rally_magnitude >= 100:
+                score += 50
+            elif rally_magnitude >= 50:
+                score += 30
+            elif rally_magnitude >= 30:
+                score += 15
 
-    # Original recovery pattern bonus
-    if detect_recovery_pattern(current_price, sma10, sma50, trend10_bias, trend50_bias):
-        bonus = INV_RECOVERY_BONUS
-        # Apply resilience multiplier
-        if resilience_count >= RESILIENCE_HIGH:
-            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
-        elif resilience_count == 0:
-            bonus = int(bonus * RESILIENCE_MULTIPLIER_LOW)
-        score += bonus
+    # 2. Return to Highs Frequency: up to +40
+    # Measures "winners stay winning" - quality stocks return to highs
+    if closes:
+        return_to_highs = compute_return_to_highs_frequency(closes, 180)
+        if return_to_highs is not None:
+            if return_to_highs >= 50:
+                score += 40
+            elif return_to_highs >= 30:
+                score += 20
 
-    # Check pattern detections
+    # 3. Trend Slope (steepness): up to +30
+    # Steeper uptrends = higher growth rate
+    if closes:
+        trend_slope = compute_trend_slope(closes, 100)
+        if trend_slope is not None:
+            if trend_slope >= 100:
+                score += 30
+            elif trend_slope >= 50:
+                score += 20
+            elif trend_slope >= 20:
+                score += 10
+
+    # 4. Volatility + Resilience Combo: +25
+    # High volatility is OK if stock recovers (innovation growth characteristic)
+    if volatility_bias == VolatilityBias.WILD and resilience_count >= 3:
+        score += 25
+
+    # ========================================================================
+    # PATTERN BONUSES (~135 points) - Opportunity Detection (keep v1.3 logic)
+    # ========================================================================
+
     capitulation_detected = detect_proven_winner_capitulation(
         current_price, closes, sma100, rsi_value, distance_from_high
     )
@@ -801,40 +850,39 @@ def calculate_investment_score(
         current_price, sma20, sma100, long_term_trend, rsi_value
     )
 
-    # Calculate TURNAROUND score (uses capitulation bonus if detected)
-    turnaround_score = score  # Start with base score
+    # Calculate TURNAROUND score (uses capitulation bonus)
+    turnaround_score = score
     if capitulation_detected:
-        bonus = INV_CAPITULATION_BONUS
-        if resilience_count >= RESILIENCE_HIGH:
-            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        bonus = 60  # INV_CAPITULATION_BONUS
+        if resilience_count >= 3:
+            bonus = int(bonus * 1.2)
         turnaround_score += bonus
     elif post_shock_detected:
-        bonus = INV_POST_SHOCK_BONUS
-        if resilience_count >= RESILIENCE_HIGH:
-            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        bonus = 60  # INV_POST_SHOCK_BONUS
+        if resilience_count >= 3:
+            bonus = int(bonus * 1.2)
         turnaround_score += bonus
 
     if cheap_winner_detected:
-        turnaround_score += INV_CHEAP_WINNER_BONUS
+        turnaround_score += 15  # INV_CHEAP_WINNER_BONUS
 
-    # Calculate BAU score (uses post-shock bonus, not capitulation)
-    bau_score = score  # Start with base score
+    # Calculate BAU score (post-shock only, not capitulation)
+    bau_score = score
     if post_shock_detected:
-        bonus = INV_POST_SHOCK_BONUS
-        if resilience_count >= RESILIENCE_HIGH:
-            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        bonus = 60
+        if resilience_count >= 3:
+            bonus = int(bonus * 1.2)
         bau_score += bonus
 
     if cheap_winner_detected:
-        bau_score += INV_CHEAP_WINNER_BONUS
+        bau_score += 15
 
-    # Check if turnaround mode is active
-    # Active when: Capitulation detected AND price still below SMA(50)
+    # Turnaround active if capitulation detected AND price < SMA(50)
     turnaround_active = capitulation_detected and (sma50 is not None and current_price < sma50)
 
-    # Normalize both scores to 0-100 scale (v1.3 max points: 255)
-    turnaround_normalized = normalize_score(turnaround_score, max_points=255)
-    bau_normalized = normalize_score(bau_score, max_points=255)
+    # Normalize to 0-100 scale (v1.4 max points: ~425)
+    turnaround_normalized = normalize_score(turnaround_score, max_points=425)
+    bau_normalized = normalize_score(bau_score, max_points=425)
 
     return ScoreResult(
         turnaround_raw=turnaround_score,

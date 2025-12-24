@@ -145,6 +145,42 @@ def diagnose_date(ticker: str, target_date: str):
     print(f"\nDistance from 20d high: {distance_from_high:+.2f}%" if distance_from_high else "Distance from high: N/A")
     print(f"Resilience count (6mo): {resilience_count} recoveries")
 
+    # v1.4 Innovation Growth Indicators
+    from .indicators import (
+        compute_rally_magnitude,
+        compute_growth_rate,
+        compute_return_to_highs_frequency,
+        compute_trend_slope
+    )
+
+    print(f"\n{'='*70}")
+    print("INNOVATION GROWTH METRICS (v1.4)")
+    print(f"{'='*70}")
+
+    rally_mag = compute_rally_magnitude(closes, 90)
+    if rally_mag is not None:
+        print(f"Rally Magnitude (90d): {rally_mag:+.1f}% (largest trough-to-peak)")
+    else:
+        print("Rally Magnitude: N/A")
+
+    growth_rate = compute_growth_rate(closes, 252) if len(closes) >= 252 else None
+    if growth_rate is not None:
+        print(f"Growth Rate (1yr): {growth_rate:+.1f}% annualized")
+    else:
+        print("Growth Rate (1yr): N/A")
+
+    return_to_highs = compute_return_to_highs_frequency(closes, 180)
+    if return_to_highs is not None:
+        print(f"Return to Highs Frequency: {return_to_highs:.1f}% of time near highs")
+    else:
+        print("Return to Highs: N/A")
+
+    trend_slope = compute_trend_slope(closes, 100)
+    if trend_slope is not None:
+        print(f"Trend Slope (100d): {trend_slope:+.1f}% annualized steepness")
+    else:
+        print("Trend Slope: N/A")
+
     # Check pattern triggers
     print(f"\n{'='*70}")
     print("PATTERN DETECTION")
