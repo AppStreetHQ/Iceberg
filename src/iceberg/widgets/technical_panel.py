@@ -70,15 +70,16 @@ class TechnicalPanel(Widget):
         macd = compute_macd(closes)
         rsi = compute_rsi(closes, 14)
         sma20 = compute_sma(closes, 20)
-        trend = compute_trend(closes, 20)
+        trend20 = compute_trend(closes, 20)
+        trend_range = compute_trend(closes, min(len(closes), self.current_range))
         volatility = compute_volatility(closes)
 
         # Pattern-based rating using indicator combinations
         macd_bull = macd and macd.bias == MACDBias.BULL
         macd_bear = macd and macd.bias == MACDBias.BEAR
-        trend_up = trend and trend.bias == TrendBias.UP
-        trend_down = trend and trend.bias == TrendBias.DOWN
-        trend_sideways = trend and trend.bias == TrendBias.SIDEWAYS
+        trend_up = trend20 and trend20.bias == TrendBias.UP
+        trend_down = trend20 and trend20.bias == TrendBias.DOWN
+        trend_sideways = trend20 and trend20.bias == TrendBias.SIDEWAYS
         rsi_overbought = rsi and rsi.bias == RSIBias.OVERBOUGHT
         rsi_oversold = rsi and rsi.bias == RSIBias.OVERSOLD
         rsi_strong = rsi and rsi.bias == RSIBias.STRONG
@@ -176,33 +177,81 @@ class TechnicalPanel(Widget):
 
         display.append("\n")  # Spacing
 
-        # SMA
+        # SMA(20) - fixed 20-day period
         if sma20 and closes:
             current_price = closes[-1]
+            sma20_diff_pct = ((current_price - sma20) / sma20) * 100 if sma20 != 0 else 0
+
             if current_price > sma20:
                 sma_emoji = "🟢"
                 sma_color = "#00ff00"
             else:
                 sma_emoji = "🔴"
                 sma_color = "#ff0000"
+
             display.append("SMA(20):         ")
             display.append(f"{sma_emoji} ", style=sma_color)
-            display.append(f"${sma20:.2f}", style=sma_color)
+            display.append(f"${sma20:.2f} ", style=sma_color)
+            display.append(f"({sma20_diff_pct:+.2f}%)", style=sma_color)
             display.append("\n")
+
+            # Trend for SMA(20)
+            if trend20:
+                trend_color = "#00ff00" if trend20.bias == TrendBias.UP else "#ff0000" if trend20.bias == TrendBias.DOWN else "#888888"
+                trend_direction = "Up" if trend20.bias == TrendBias.UP else "Down" if trend20.bias == TrendBias.DOWN else "Sideways"
+                display.append("  Trend:         ")
+                display.append(trend_direction, style=trend_color)
+                display.append(" (vs SMA(20): ")
+                display.append(f"{trend20.delta_pct:+.2f}%", style=trend_color)
+                display.append(")\n")
+            else:
+                display.append("  Trend:         N/A\n")
         else:
             display.append("SMA(20):         N/A\n")
 
-        # Trend
-        if trend:
-            color = "#00ff00" if trend.bias == TrendBias.UP else "#ff0000" if trend.bias == TrendBias.DOWN else "#888888"
-            direction = "Up" if trend.bias == TrendBias.UP else "Down" if trend.bias == TrendBias.DOWN else "Sideways"
-            display.append("Trend:           ")
-            display.append(direction, style=color)
-            display.append(" (Last vs SMA: ")
-            display.append(f"{trend.delta_pct:+.2f}%", style=color)
-            display.append(")\n")
+        display.append("\n")  # Spacing between SMAs
+
+        # SMA(range) - dynamic based on selected range
+        if closes and len(closes) >= 2:
+            current_price = closes[-1]
+            sma_range = compute_sma(closes, len(closes))
+
+            if sma_range:
+                sma_range_diff_pct = ((current_price - sma_range) / sma_range) * 100 if sma_range != 0 else 0
+
+                if current_price > sma_range:
+                    sma_range_emoji = "🟢"
+                    sma_range_color = "#00ff00"
+                else:
+                    sma_range_emoji = "🔴"
+                    sma_range_color = "#ff0000"
+
+                # Dynamically adjust spacing based on range value length
+                range_label = f"SMA({self.current_range}):"
+                padding = " " * (17 - len(range_label))  # Align to same position as SMA(20)
+
+                display.append(range_label)
+                display.append(padding)
+                display.append(f"{sma_range_emoji} ", style=sma_range_color)
+                display.append(f"${sma_range:.2f} ", style=sma_range_color)
+                display.append(f"({sma_range_diff_pct:+.2f}%)", style=sma_range_color)
+                display.append("\n")
+
+                # Trend for SMA(range)
+                if trend_range:
+                    trend_color = "#00ff00" if trend_range.bias == TrendBias.UP else "#ff0000" if trend_range.bias == TrendBias.DOWN else "#888888"
+                    trend_direction = "Up" if trend_range.bias == TrendBias.UP else "Down" if trend_range.bias == TrendBias.DOWN else "Sideways"
+                    display.append("  Trend:         ")
+                    display.append(trend_direction, style=trend_color)
+                    display.append(f" (vs SMA({self.current_range}): ")
+                    display.append(f"{trend_range.delta_pct:+.2f}%", style=trend_color)
+                    display.append(")\n")
+                else:
+                    display.append("  Trend:         N/A\n")
+            else:
+                display.append(f"SMA({self.current_range}):       N/A\n")
         else:
-            display.append("Trend:           N/A\n")
+            display.append(f"SMA({self.current_range}):       N/A\n")
 
         display.append("\n")  # Spacing
 
