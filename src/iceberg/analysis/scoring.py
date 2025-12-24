@@ -8,40 +8,61 @@ which provides two perspectives on stock signals:
 
 See ICEBERG_INDEX.md for full methodology documentation.
 
-Version: 1.0 (2024-12-24)
+Version: 1.1 (2024-12-24)
+- Added resilience-based scoring
+- Enhanced recovery pattern detection (post-shock recovery)
+- Context-aware RSI and volatility scoring
+- "Cheap on a winner" detection
+- Distance from high metric
 """
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from .models import MACDBias, RSIBias, TrendBias, VolatilityBias
 
 
 # ============================================================================
-# TRADE SCORE WEIGHTS (Total: ±85 base + 15 bonus = ±100 max)
+# TRADE SCORE WEIGHTS v1.1 (Total: ±85 base + up to 65 bonus = ±150 max)
 # ============================================================================
 
 TRADE_MACD_WEIGHT = 25          # Momentum indicator
-TRADE_RSI_WEIGHT = 15           # Strength/extremes
+TRADE_RSI_WEIGHT = 15           # Strength/extremes (context-aware)
 TRADE_SMA10_WEIGHT = 20         # Immediate trend
 TRADE_TREND10_WEIGHT = 20       # Recovery confirmation
-TRADE_VOLATILITY_WEIGHT = 5     # Risk/opportunity
-TRADE_RECOVERY_BONUS = 15       # Pattern detection bonus
+TRADE_VOLATILITY_WEIGHT = 5     # Risk/opportunity (resilience-aware)
+TRADE_RECOVERY_BONUS = 20       # Original recovery pattern (up from 15)
+TRADE_POST_SHOCK_BONUS = 25     # Post-shock recovery pattern (NEW)
+TRADE_CHEAP_WINNER_BONUS = 15   # Cheap on a winner pattern (NEW)
+TRADE_RSI_OVERSOLD_BONUS = 10   # Extra bonus for oversold + uptrend (NEW)
 
 TRADE_MAX_BASE_POINTS = 85
 
 
 # ============================================================================
-# INVESTMENT SCORE WEIGHTS (Total: ±80 base + 15 bonus = ±95 max)
+# INVESTMENT SCORE WEIGHTS v1.1 (Total: ±90 base + up to 65 bonus = ±155 max)
 # ============================================================================
 
 INV_MACD_WEIGHT = 15            # Momentum alignment
-INV_RSI_WEIGHT = 10             # Strength confirmation
+INV_RSI_WEIGHT = 10             # Strength confirmation (context-aware)
 INV_SMA50_WEIGHT = 20           # Recent growth baseline
 INV_TREND50_WEIGHT = 20         # Medium-term trend
 INV_PRICE_VS_SMA50_WEIGHT = 15  # Distance from normal
-INV_VOLATILITY_WEIGHT = 10      # Risk measure
-INV_RECOVERY_BONUS = 15         # Pattern detection bonus
+INV_VOLATILITY_WEIGHT = 10      # Risk measure (resilience-aware)
+INV_RECOVERY_BONUS = 20         # Original recovery pattern (up from 15)
+INV_POST_SHOCK_BONUS = 25       # Post-shock recovery pattern (NEW)
+INV_CHEAP_WINNER_BONUS = 15     # Cheap on a winner pattern (NEW)
+INV_RSI_OVERSOLD_BONUS = 10     # Extra bonus for oversold + uptrend (NEW)
 
 INV_MAX_BASE_POINTS = 90
+
+
+# ============================================================================
+# RESILIENCE THRESHOLDS
+# ============================================================================
+
+RESILIENCE_HIGH = 3      # 3+ recoveries in 6 months = highly resilient
+RESILIENCE_MEDIUM = 1    # 1-2 recoveries = medium resilience
+RESILIENCE_MULTIPLIER_HIGH = 1.2
+RESILIENCE_MULTIPLIER_LOW = 0.8
 
 
 # ============================================================================
@@ -198,6 +219,80 @@ def score_volatility_investment(volatility_bias: Optional[VolatilityBias], weigh
         return 0
 
 
+def score_rsi_contextual(
+    rsi_value: Optional[float],
+    rsi_bias: Optional[RSIBias],
+    long_term_trend: Optional[TrendBias],
+    weight: int
+) -> Tuple[int, int]:
+    """
+    Score RSI with context awareness (v1.1).
+
+    Oversold signals are stronger when long-term trend is UP (buying opportunity),
+    weaker when long-term trend is DOWN (falling knife warning).
+
+    Args:
+        rsi_value: RSI value (0-100)
+        rsi_bias: RSI bias
+        long_term_trend: Long-term trend (100d SMA)
+        weight: Base weight
+
+    Returns:
+        Tuple of (base_score, bonus_points)
+    """
+    base_score = score_rsi(rsi_value, rsi_bias, weight)
+    bonus = 0
+
+    # Extra bonus for oversold + long-term uptrend (cheap on a winner!)
+    if (rsi_bias == RSIBias.OVERSOLD and
+        long_term_trend == TrendBias.UP):
+        bonus = TRADE_RSI_OVERSOLD_BONUS  # +10 extra points
+
+    # Reduce oversold bonus if long-term trend is DOWN (falling knife)
+    elif (rsi_bias == RSIBias.OVERSOLD and
+          long_term_trend == TrendBias.DOWN):
+        base_score = int(base_score * 0.3)  # Only 30% of normal oversold bonus
+
+    return base_score, bonus
+
+
+def score_volatility_resilient(
+    volatility_bias: Optional[VolatilityBias],
+    resilience_count: int,
+    weight: int,
+    score_type: str = 'investment'
+) -> int:
+    """
+    Score volatility with resilience awareness (v1.1).
+
+    Wild volatility is less penalized for stocks that have shown resilience.
+
+    Args:
+        volatility_bias: Volatility bias
+        resilience_count: Number of recovery patterns in past 6 months
+        weight: Base weight
+        score_type: 'trade' or 'investment'
+
+    Returns:
+        Volatility score
+    """
+    if score_type == 'trade':
+        base_score = score_volatility_trade(volatility_bias, weight)
+    else:
+        base_score = score_volatility_investment(volatility_bias, weight)
+
+    # Adjust for resilience (only affects Wild volatility penalty)
+    if volatility_bias == VolatilityBias.WILD and score_type == 'investment':
+        if resilience_count >= RESILIENCE_HIGH:
+            # High resilience: reduce penalty from -10 to -5
+            base_score = int(base_score * 0.5)
+        elif resilience_count == 0:
+            # No resilience: increase penalty from -10 to -15
+            base_score = int(base_score * 1.5)
+
+    return base_score
+
+
 def detect_recovery_pattern(
     current_price: float,
     sma10: Optional[float],
@@ -206,7 +301,7 @@ def detect_recovery_pattern(
     trend50_bias: Optional[TrendBias]
 ) -> bool:
     """
-    Detect "buy the dip" recovery pattern.
+    Detect "buy the dip" recovery pattern (v1.0).
 
     Pattern criteria:
     - Price < SMA(50)     → Below recent high (pullback happened)
@@ -238,6 +333,98 @@ def detect_recovery_pattern(
     )
 
 
+def detect_post_shock_recovery(
+    current_price: float,
+    distance_from_high: Optional[float],
+    rsi_value: Optional[float],
+    macd_hist: Optional[float],
+    long_term_trend: Optional[TrendBias]
+) -> bool:
+    """
+    Detect post-shock recovery pattern (v1.1 NEW).
+
+    Identifies stocks recovering after sharp drops (earnings misses, etc.)
+    We can't predict the shock, but we can detect the recovery.
+
+    Pattern criteria:
+    - Price dropped >10% from 20-day high
+    - Long-term trend still UP (not a structural decline)
+    - Early recovery signals:
+      - RSI climbing from oversold (<35)
+      - OR MACD histogram improving (turning less negative)
+
+    Use case: META at $594 after earnings drop from $785
+
+    Args:
+        current_price: Current stock price
+        distance_from_high: % below 20-day high (negative value)
+        rsi_value: RSI value
+        macd_hist: MACD histogram value
+        long_term_trend: 100-day trend
+
+    Returns:
+        True if post-shock recovery detected
+    """
+    if distance_from_high is None or long_term_trend is None:
+        return False
+
+    # Must be down significantly from recent high
+    if distance_from_high > -10:
+        return False
+
+    # Long-term trend must still be up (not structural decline)
+    if long_term_trend != TrendBias.UP:
+        return False
+
+    # Early recovery signals
+    rsi_recovering = rsi_value is not None and 25 < rsi_value < 45
+    macd_improving = macd_hist is not None and macd_hist > -2
+
+    return rsi_recovering or macd_improving
+
+
+def detect_cheap_on_winner(
+    current_price: float,
+    sma20: Optional[float],
+    sma100: Optional[float],
+    long_term_trend: Optional[TrendBias],
+    rsi_value: Optional[float]
+) -> bool:
+    """
+    Detect "cheap on a winner" pattern (v1.1 NEW).
+
+    Identifies quality stocks on temporary pullbacks.
+    Different from falling knife - long-term uptrend is intact.
+
+    Pattern criteria:
+    - Price < SMA(20)         → Short-term pullback
+    - Price > SMA(100)        → Long-term uptrend intact
+    - Trend(100) == Up        → Structural growth continues
+    - RSI < 50                → Not overbought
+
+    Use case: GOOGL dips on broad market weakness but fundamentals strong
+
+    Args:
+        current_price: Current stock price
+        sma20: 20-day SMA
+        sma100: 100-day SMA
+        long_term_trend: 100-day trend
+        rsi_value: RSI value
+
+    Returns:
+        True if cheap on winner pattern detected
+    """
+    if not all([sma20, sma100, long_term_trend]):
+        return False
+
+    return (
+        current_price < sma20 and
+        current_price > sma100 and
+        long_term_trend == TrendBias.UP and
+        (rsi_value is None or rsi_value < 50)
+    )
+
+
 # ============================================================================
 # MAIN SCORING FUNCTIONS
 # ============================================================================
@@ -245,29 +432,43 @@ def detect_recovery_pattern(
 def calculate_trade_score(
     current_price: float,
     macd_bias: Optional[MACDBias],
+    macd_hist: Optional[float],
     rsi_value: Optional[float],
     rsi_bias: Optional[RSIBias],
     sma10: Optional[float],
-    trend10_bias: Optional[TrendBias],
+    sma20: Optional[float],
     sma50: Optional[float],
+    sma100: Optional[float],
+    trend10_bias: Optional[TrendBias],
     trend50_bias: Optional[TrendBias],
-    volatility_bias: Optional[VolatilityBias]
+    long_term_trend: Optional[TrendBias],
+    volatility_bias: Optional[VolatilityBias],
+    distance_from_high: Optional[float] = None,
+    resilience_count: int = 0,
+    closes: Optional[List[float]] = None
 ) -> Tuple[int, int]:
     """
-    Calculate Trade Score (0-100) for short-term trading signals.
+    Calculate Trade Score (0-100) for short-term trading signals (v1.1).
 
-    Emphasizes momentum and immediate entry timing.
+    Emphasizes momentum and immediate entry timing with resilience awareness.
 
     Args:
         current_price: Current stock price
         macd_bias: MACD indicator bias
+        macd_hist: MACD histogram value
         rsi_value: RSI value (0-100)
         rsi_bias: RSI indicator bias
         sma10: 10-day simple moving average
+        sma20: 20-day simple moving average
+        sma50: 50-day simple moving average
+        sma100: 100-day simple moving average
         trend10_bias: 10-day trend bias
-        sma50: 50-day simple moving average (for recovery pattern)
-        trend50_bias: 50-day trend bias (for recovery pattern)
+        trend50_bias: 50-day trend bias
+        long_term_trend: 100-day trend bias
         volatility_bias: Volatility indicator bias
+        distance_from_high: % below 20-day high (negative)
+        resilience_count: Number of recovery patterns in past 6 months
+        closes: Price history for additional calculations (optional)
 
     Returns:
         Tuple of (raw_score, normalized_score_0_100)
@@ -277,8 +478,12 @@ def calculate_trade_score(
     # MACD momentum
     score += score_macd(macd_bias, TRADE_MACD_WEIGHT)
 
-    # RSI strength
-    score += score_rsi(rsi_value, rsi_bias, TRADE_RSI_WEIGHT)
+    # RSI strength (context-aware)
+    rsi_score, rsi_bonus = score_rsi_contextual(
+        rsi_value, rsi_bias, long_term_trend, TRADE_RSI_WEIGHT
+    )
+    score += rsi_score
+    score += rsi_bonus
 
     # SMA(10) position
     if sma10:
@@ -287,15 +492,39 @@ def calculate_trade_score(
     # Trend(10) direction
     score += score_trend(trend10_bias, TRADE_TREND10_WEIGHT)
 
-    # Volatility (opportunity)
-    score += score_volatility_trade(volatility_bias, TRADE_VOLATILITY_WEIGHT)
+    # Volatility (opportunity, resilience-aware)
+    score += score_volatility_resilient(
+        volatility_bias, resilience_count, TRADE_VOLATILITY_WEIGHT, 'trade'
+    )
 
-    # Recovery pattern bonus
+    # Original recovery pattern bonus
     if detect_recovery_pattern(current_price, sma10, sma50, trend10_bias, trend50_bias):
-        score += TRADE_RECOVERY_BONUS
+        bonus = TRADE_RECOVERY_BONUS
+        # Apply resilience multiplier
+        if resilience_count >= RESILIENCE_HIGH:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        elif resilience_count == 0:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_LOW)
+        score += bonus
 
-    # Normalize to 0-100 scale
-    normalized = normalize_score(score, max_points=100)
+    # Post-shock recovery pattern (v1.1 NEW)
+    if detect_post_shock_recovery(
+        current_price, distance_from_high, rsi_value, macd_hist, long_term_trend
+    ):
+        bonus = TRADE_POST_SHOCK_BONUS
+        # Apply resilience multiplier
+        if resilience_count >= RESILIENCE_HIGH:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        score += bonus
+
+    # Cheap on a winner pattern (v1.1 NEW)
+    if detect_cheap_on_winner(
+        current_price, sma20, sma100, long_term_trend, rsi_value
+    ):
+        score += TRADE_CHEAP_WINNER_BONUS
+
+    # Normalize to 0-100 scale (v1.1 max points increased)
+    normalized = normalize_score(score, max_points=150)
 
     return score, normalized
 
@@ -303,29 +532,43 @@ def calculate_trade_score(
 def calculate_investment_score(
     current_price: float,
     macd_bias: Optional[MACDBias],
+    macd_hist: Optional[float],
     rsi_value: Optional[float],
     rsi_bias: Optional[RSIBias],
     sma10: Optional[float],
+    sma20: Optional[float],
     sma50: Optional[float],
+    sma100: Optional[float],
     trend10_bias: Optional[TrendBias],
     trend50_bias: Optional[TrendBias],
-    volatility_bias: Optional[VolatilityBias]
+    long_term_trend: Optional[TrendBias],
+    volatility_bias: Optional[VolatilityBias],
+    distance_from_high: Optional[float] = None,
+    resilience_count: int = 0,
+    closes: Optional[List[float]] = None
 ) -> Tuple[int, int]:
     """
-    Calculate Investment Score (0-100) for long-term holding signals.
+    Calculate Investment Score (0-100) for long-term holding signals (v1.1).
 
-    Emphasizes trend strength and value opportunities.
+    Emphasizes trend strength and value opportunities with resilience awareness.
 
     Args:
         current_price: Current stock price
         macd_bias: MACD indicator bias
+        macd_hist: MACD histogram value
         rsi_value: RSI value (0-100)
         rsi_bias: RSI indicator bias
-        sma10: 10-day simple moving average (for recovery pattern)
+        sma10: 10-day simple moving average
+        sma20: 20-day simple moving average
         sma50: 50-day simple moving average
-        trend10_bias: 10-day trend bias (for recovery pattern)
+        sma100: 100-day simple moving average
+        trend10_bias: 10-day trend bias
         trend50_bias: 50-day trend bias
+        long_term_trend: 100-day trend bias
         volatility_bias: Volatility indicator bias
+        distance_from_high: % below 20-day high (negative)
+        resilience_count: Number of recovery patterns in past 6 months
+        closes: Price history for additional calculations (optional)
 
     Returns:
         Tuple of (raw_score, normalized_score_0_100)
@@ -335,8 +578,12 @@ def calculate_investment_score(
     # MACD alignment
     score += score_macd(macd_bias, INV_MACD_WEIGHT)
 
-    # RSI confirmation
-    score += score_rsi(rsi_value, rsi_bias, INV_RSI_WEIGHT)
+    # RSI confirmation (context-aware)
+    rsi_score, rsi_bonus = score_rsi_contextual(
+        rsi_value, rsi_bias, long_term_trend, INV_RSI_WEIGHT
+    )
+    score += rsi_score
+    score += rsi_bonus
 
     # SMA(50) position (recent growth baseline)
     if sma50:
@@ -349,15 +596,39 @@ def calculate_investment_score(
     if sma50:
         score += score_sma_position(current_price, sma50, INV_PRICE_VS_SMA50_WEIGHT)
 
-    # Volatility (risk)
-    score += score_volatility_investment(volatility_bias, INV_VOLATILITY_WEIGHT)
+    # Volatility (risk, resilience-aware)
+    score += score_volatility_resilient(
+        volatility_bias, resilience_count, INV_VOLATILITY_WEIGHT, 'investment'
+    )
 
-    # Recovery pattern bonus
+    # Original recovery pattern bonus
     if detect_recovery_pattern(current_price, sma10, sma50, trend10_bias, trend50_bias):
-        score += INV_RECOVERY_BONUS
+        bonus = INV_RECOVERY_BONUS
+        # Apply resilience multiplier
+        if resilience_count >= RESILIENCE_HIGH:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        elif resilience_count == 0:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_LOW)
+        score += bonus
 
-    # Normalize to 0-100 scale
-    normalized = normalize_score(score, max_points=95)
+    # Post-shock recovery pattern (v1.1 NEW)
+    if detect_post_shock_recovery(
+        current_price, distance_from_high, rsi_value, macd_hist, long_term_trend
+    ):
+        bonus = INV_POST_SHOCK_BONUS
+        # Apply resilience multiplier
+        if resilience_count >= RESILIENCE_HIGH:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        score += bonus
+
+    # Cheap on a winner pattern (v1.1 NEW)
+    if detect_cheap_on_winner(
+        current_price, sma20, sma100, long_term_trend, rsi_value
+    ):
+        score += INV_CHEAP_WINNER_BONUS
+
+    # Normalize to 0-100 scale (v1.1 max points increased)
+    normalized = normalize_score(score, max_points=155)
 
     return score, normalized
 

@@ -236,7 +236,171 @@ Potential additions being considered:
 - **Sector correlation:** Relative strength vs sector ETF
 - **Customizable profiles:** Growth/Value/Crypto-specific weights
 
+---
+
+# Iceberg Score System v1.1 - Resilience & Recovery Focus
+
+## Overview
+
+Version 1.1 addresses the core issue discovered through back-testing: **the system was momentum-chasing instead of value-seeking**, buying tops and selling bottoms.
+
+### The Problem (v1.0)
+Back-testing revealed consistent failures:
+- High scores when stocks were extended → bought overbought territory
+- Low scores when stocks were beaten down → missed recovery opportunities
+- **META example:** Rated UNDERPERFORM/SELL at $594 (after earnings drop) → stock gained +12%
+- **AVGO example:** Rated STRONG BUY at $403 (peak) → stock dropped -13%
+
+### The Solution (v1.1)
+**Focus on resilience and post-shock recovery** instead of trying to predict reversals:
+- Can't predict earnings misses or external shocks
+- **CAN** identify stocks that historically recover from dips (resilience)
+- **CAN** detect early recovery signals after shocks (post-shock patterns)
+- **CAN** distinguish "cheap on a winner" from "falling knife"
+
+## v1.1 Enhancements
+
+### 1. Post-Shock Recovery Detection (+25 bonus)
+
+Identifies stocks recovering after sharp drops (earnings misses, market corrections).
+
+**Pattern criteria:**
+- Price dropped >10% from 20-day high
+- Long-term trend (100d) still UP (not structural decline)
+- Early recovery signals:
+  - RSI climbing from oversold (25-45 range)
+  - OR MACD histogram improving (turning less negative)
+
+**Use case:** META at $594 after drop from $785 - v1.0 said SELL, v1.1 detects recovery opportunity
+
+### 2. "Cheap on a Winner" Detection (+15 bonus)
+
+Distinguishes quality stocks on temporary pullbacks from falling knives.
+
+**Pattern criteria:**
+- Price < SMA(20) → Short-term pullback
+- Price > SMA(100) → Long-term uptrend intact
+- Trend(100) == UP → Structural growth continues
+- RSI < 50 → Not overbought
+
+**Use case:** GOOGL dipping on broad market weakness while fundamentals remain strong
+
+### 3. Resilience Scoring (Multiplier System)
+
+Counts recovery patterns over past 6 months to measure stock resilience.
+
+**Resilience tiers:**
+- **High resilience** (3+ recoveries): 1.2x bonus multiplier
+- **Medium resilience** (1-2 recoveries): 1.0x (normal)
+- **Low resilience** (0 recoveries): 0.8x multiplier
+
+Resilience multiplier applies to:
+- Original recovery pattern bonus
+- Post-shock recovery bonus
+
+**Also adjusts volatility penalty:**
+- Wild volatility on HIGH resilience stock: -5 instead of -10
+- Wild volatility on LOW resilience stock: -15 instead of -10
+
+### 4. Context-Aware RSI Scoring
+
+RSI signals now consider long-term trend context.
+
+**Oversold signals:**
+- **Oversold + Long-term trend UP:** Base +15 + Bonus +10 = +25 total (opportunity!)
+- **Oversold + Long-term trend DOWN:** +15 × 0.3 = +5 (falling knife warning)
+
+### 5. Distance from High Metric
+
+Tracks percentage below 20-day high to detect pullbacks.
+
+**Used by:**
+- Post-shock recovery pattern (triggers on >10% drop)
+- Future enhancements (position sizing, risk management)
+
+## Updated Weight Constants (v1.1)
+
+### Trade Score (Max: 150 points)
+```
+Base Components (±85):
+  MACD: 25
+  RSI: 15 (context-aware)
+  SMA(10) position: 20
+  Trend(10): 20
+  Volatility: 5 (resilience-aware)
+
+Bonuses (up to +65):
+  Recovery pattern: 20 (up from 15, resilience-multiplied)
+  Post-shock recovery: 25 (NEW)
+  Cheap on winner: 15 (NEW)
+  RSI oversold + uptrend: 10 (NEW)
+```
+
+### Investment Score (Max: 155 points)
+```
+Base Components (±90):
+  MACD: 15
+  RSI: 10 (context-aware)
+  SMA(50) position: 20
+  Trend(50): 20
+  Price vs SMA(50): 15
+  Volatility: 10 (resilience-aware)
+
+Bonuses (up to +65):
+  Recovery pattern: 20 (up from 15, resilience-multiplied)
+  Post-shock recovery: 25 (NEW)
+  Cheap on winner: 15 (NEW)
+  RSI oversold + uptrend: 10 (NEW)
+```
+
+## Expected Impact
+
+### META Nov 21 Example ($594 after collapse from $785)
+
+**v1.0 scores:**
+- Trade: 31/100 (UNDERPERFORM)
+- Investment: 21/100 (SELL)
+- Result: **Missed +12% gain**
+
+**v1.1 scores (estimated):**
+- Post-shock recovery: +25 (price dropped 24%, RSI 38, long-term trend up)
+- Context-aware RSI oversold: +25 (instead of +15)
+- Resilience bonus (if GOOGL-like history): 1.2x multiplier
+- **Estimated: 75/100 (BUY) / 65/100 (OUTPERFORM)**
+
+### AVGO Nov 28 Example ($403 at peak)
+
+**v1.0 scores:**
+- Trade: 86/100 (STRONG BUY)
+- Investment: 80/100 (BUY)
+- Result: **Bought top, lost -13%**
+
+**v1.1 scores (estimated):**
+- No recovery patterns (not a dip)
+- No cheap on winner (price at highs)
+- No post-shock recovery (no drop from high)
+- **Estimated: 65/100 (OUTPERFORM) / 52/100 (HOLD)**
+- Lower scores = better signal control
+
+## Philosophy Shift
+
+**v1.0:** "Follow the momentum" → Works in trends, fails at reversals
+**v1.1:** "Identify resilience, detect recovery" → Works post-shock, avoids tops
+
+We're not trying to predict earnings surprises or Fed announcements.
+We're identifying stocks that **historically bounce back** and **detecting when recovery starts**.
+
 ## Version History
+
+### v1.1 - 2024-12-24
+- **Resilience-based scoring:** Count recovery patterns, apply multipliers
+- **Post-shock recovery detection:** Identify stocks recovering after sharp drops (+25 bonus)
+- **Context-aware RSI:** Oversold signals stronger on uptrending stocks
+- **Resilience-aware volatility:** Wild volatility less penalized for resilient stocks
+- **"Cheap on a winner" detection:** Quality stocks on temporary pullbacks (+15 bonus)
+- **Distance from high metric:** Track pullback severity
+- **Increased max points:** Trade 150 (from 100), Investment 155 (from 95)
+- **Back-test validated:** Addresses momentum-chasing problem
 
 ### v1.0 - 2024-12-24
 - Initial dual-score system
@@ -245,7 +409,9 @@ Potential additions being considered:
 - Recovery Pattern detection (+15 bonus)
 - Growth stock focus (SMA50 vs SMA200)
 - Optimized for catching RKLB-style opportunities
+- **Limitation discovered:** Momentum-chasing behavior
 
 ---
 
-**See Implementation:** `src/iceberg/analysis/scoring.py`
+**See Implementation:** `src/iceberg/analysis/scoring.py` (v1.1)
+**See Indicators:** `src/iceberg/analysis/indicators.py` (resilience, distance from high, long-term trend)

@@ -216,3 +216,99 @@ def compute_volatility(closes: List[float]) -> Optional[VolatilitySummary]:
         bias = VolatilityBias.WILD
 
     return VolatilitySummary(sigma=sigma, bias=bias)
+
+
+def compute_distance_from_high(closes: List[float], period: int = 20) -> Optional[float]:
+    """
+    Calculate percentage distance from recent high
+
+    Used to detect pullbacks and identify "cheap on a winner" opportunities.
+
+    Args:
+        closes: Closing prices (oldest to newest)
+        period: Period to look back for high (default 20 days)
+
+    Returns:
+        Percentage below recent high (negative value) or None if insufficient data
+        Example: -15.5 means current price is 15.5% below the 20-day high
+    """
+    if len(closes) < period + 1:
+        return None
+
+    recent_closes = closes[-period:]
+    recent_high = max(recent_closes)
+    current_price = closes[-1]
+
+    if recent_high == 0:
+        return None
+
+    distance_pct = ((current_price - recent_high) / recent_high) * 100
+    return distance_pct
+
+
+def count_recovery_patterns(closes: List[float], lookback_days: int = 180) -> int:
+    """
+    Count recovery patterns over a lookback period to measure resilience.
+
+    Recovery pattern: Price drops below SMA(50), then recovers back above it
+    with upward momentum. This indicates a stock that bounces back from dips.
+
+    Args:
+        closes: Closing prices (oldest to newest)
+        lookback_days: Days to look back (default 180 = ~6 months)
+
+    Returns:
+        Number of recovery patterns detected (resilience score)
+    """
+    if len(closes) < 50:
+        return 0
+
+    # Use only lookback period
+    start_idx = max(0, len(closes) - lookback_days)
+    period_closes = closes[start_idx:]
+
+    if len(period_closes) < 50:
+        return 0
+
+    recovery_count = 0
+    in_dip = False
+
+    # Scan through the period looking for dip → recovery patterns
+    for i in range(50, len(period_closes)):
+        window = period_closes[:i+1]
+        sma50 = compute_sma(window, 50)
+        sma10 = compute_sma(window, 10)
+        current_price = window[-1]
+
+        if sma50 is None or sma10 is None:
+            continue
+
+        # Detect dip: price below SMA(50)
+        if current_price < sma50 and not in_dip:
+            in_dip = True
+
+        # Detect recovery: price back above SMA(50) with momentum
+        elif current_price > sma50 and in_dip:
+            # Confirm recovery with upward momentum
+            if current_price > sma10:
+                recovery_count += 1
+            in_dip = False
+
+    return recovery_count
+
+
+def compute_long_term_trend(closes: List[float], period: int = 100) -> Optional[TrendBias]:
+    """
+    Determine long-term trend using longer SMA period.
+
+    Used to distinguish "cheap on a winner" from "falling knife".
+
+    Args:
+        closes: Closing prices (oldest to newest)
+        period: SMA period for long-term trend (default 100)
+
+    Returns:
+        TrendBias (UP/DOWN/SIDEWAYS) or None if insufficient data
+    """
+    trend = compute_trend(closes, period)
+    return trend.bias if trend else None

@@ -14,6 +14,9 @@ from ..analysis.indicators import (
     compute_sma,
     compute_trend,
     compute_volatility,
+    compute_distance_from_high,
+    count_recovery_patterns,
+    compute_long_term_trend,
 )
 from ..analysis.models import MACDBias, RSIBias, TrendBias, VolatilityBias
 from ..analysis.scoring import (
@@ -82,38 +85,58 @@ class TechnicalPanel(Widget):
         sma10 = compute_sma(closes, 10)
         sma20 = compute_sma(closes, 20)
         sma50 = compute_sma(closes, 50)
+        sma100 = compute_sma(closes, 100)
 
         # Trends for scoring and display
         trend10 = compute_trend(closes, 10)
         trend20 = compute_trend(closes, 20)
         trend50 = compute_trend(closes, 50)
         trend_range = compute_trend(closes, min(len(closes), self.current_range))
+        long_term_trend = compute_long_term_trend(closes, 100)
 
         volatility = compute_volatility(closes)
 
-        # Calculate Iceberg Scores
+        # v1.1 indicators
+        distance_from_high = compute_distance_from_high(closes, 20)
+        resilience_count = count_recovery_patterns(closes, 180)
+
+        # Calculate Iceberg Scores (v1.1)
         trade_raw, trade_score = calculate_trade_score(
             current_price=current_price,
             macd_bias=macd.bias if macd else None,
+            macd_hist=macd.hist if macd else None,
             rsi_value=rsi.value if rsi else None,
             rsi_bias=rsi.bias if rsi else None,
             sma10=sma10,
-            trend10_bias=trend10.bias if trend10 else None,
+            sma20=sma20,
             sma50=sma50,
+            sma100=sma100,
+            trend10_bias=trend10.bias if trend10 else None,
             trend50_bias=trend50.bias if trend50 else None,
-            volatility_bias=volatility.bias if volatility else None
+            long_term_trend=long_term_trend,
+            volatility_bias=volatility.bias if volatility else None,
+            distance_from_high=distance_from_high,
+            resilience_count=resilience_count,
+            closes=closes
         )
 
         inv_raw, inv_score = calculate_investment_score(
             current_price=current_price,
             macd_bias=macd.bias if macd else None,
+            macd_hist=macd.hist if macd else None,
             rsi_value=rsi.value if rsi else None,
             rsi_bias=rsi.bias if rsi else None,
             sma10=sma10,
+            sma20=sma20,
             sma50=sma50,
+            sma100=sma100,
             trend10_bias=trend10.bias if trend10 else None,
             trend50_bias=trend50.bias if trend50 else None,
-            volatility_bias=volatility.bias if volatility else None
+            long_term_trend=long_term_trend,
+            volatility_bias=volatility.bias if volatility else None,
+            distance_from_high=distance_from_high,
+            resilience_count=resilience_count,
+            closes=closes
         )
 
         # Build display using Text object for consistent rendering
@@ -122,7 +145,7 @@ class TechnicalPanel(Widget):
         # Title
         display.append(f"{self.current_ticker} - Technical Analysis", style="bold bright_white")
         display.append("\n\n")
-        display.append("Iceberg™ Score System v1.0", style="#00ffff")
+        display.append("Iceberg™ Score System v1.1", style="#00ffff")
         display.append("\n\n")
 
         # Iceberg Scores
