@@ -201,6 +201,23 @@ def diagnose_date(ticker: str, target_date: str):
         if not (rsi_ok or stabilizing):
             print(f"  → Failed: No early recovery signals (RSI {rsi.value:.1f if rsi else 'N/A'} needs >20, or price needs to be stabilizing)")
 
+    # Import the capitulation detection function
+    from .scoring import detect_proven_winner_capitulation
+
+    capitulation = detect_proven_winner_capitulation(
+        current_price,
+        closes,
+        sma100,
+        rsi.value if rsi else None,
+        distance_from_high
+    )
+    print(f"Proven Winner Capitulation (v1.3): {'✓ DETECTED' if capitulation else '✗ Not detected'}")
+    if capitulation:
+        print(f"  → Trade Bonus: +120 (× {1.2 if resilience_count >= 3 else 1.0} resilience)")
+        print(f"  → Investment Bonus: +100 (× {1.2 if resilience_count >= 3 else 1.0} resilience)")
+        if sma50:
+            print(f"  → Turnaround mode ACTIVE until price crosses ${sma50:.2f} (SMA 50)")
+
     cheap_winner = detect_cheap_on_winner(
         current_price,
         sma20,
@@ -217,7 +234,7 @@ def diagnose_date(ticker: str, target_date: str):
     print("SCORING")
     print(f"{'='*70}")
 
-    trade_raw, trade_score = calculate_trade_score(
+    trade_result = calculate_trade_score(
         current_price=current_price,
         macd_bias=macd.bias if macd else None,
         macd_hist=macd.hist if macd else None,
@@ -236,7 +253,7 @@ def diagnose_date(ticker: str, target_date: str):
         closes=closes
     )
 
-    inv_raw, inv_score = calculate_investment_score(
+    inv_result = calculate_investment_score(
         current_price=current_price,
         macd_bias=macd.bias if macd else None,
         macd_hist=macd.hist if macd else None,
@@ -255,14 +272,35 @@ def diagnose_date(ticker: str, target_date: str):
         closes=closes
     )
 
-    trade_label = get_rating_label(trade_score)
-    inv_label = get_rating_label(inv_score)
+    # Display scores (with turnaround if active)
+    if trade_result.turnaround_active:
+        print(f"🔥 TURNAROUND MODE ACTIVE (price below SMA(50): ${sma50:.2f})")
+        print(f"\nTrade Score:")
+        trade_label = get_rating_label(trade_result.turnaround_score)
+        print(f"  Turnaround: {trade_result.turnaround_score}/100 ({trade_label}) ⚡")
+        print(f"    Raw: {trade_result.turnaround_raw}")
+        trade_bau_label = get_rating_label(trade_result.bau_score)
+        print(f"  BAU: {trade_result.bau_score}/100 ({trade_bau_label})")
+        print(f"    Raw: {trade_result.bau_raw}")
+    else:
+        trade_label = get_rating_label(trade_result.display_score)
+        print(f"Trade Score: {trade_result.display_score}/100 ({trade_label})")
+        print(f"  Raw score: {trade_result.display_raw}")
 
-    print(f"Trade Score: {trade_score}/100 ({trade_label})")
-    print(f"  Raw score: {trade_raw}")
+    print()
 
-    print(f"\nInvestment Score: {inv_score}/100 ({inv_label})")
-    print(f"  Raw score: {inv_raw}")
+    if inv_result.turnaround_active:
+        print(f"Investment Score:")
+        inv_label = get_rating_label(inv_result.turnaround_score)
+        print(f"  Turnaround: {inv_result.turnaround_score}/100 ({inv_label}) ⚡")
+        print(f"    Raw: {inv_result.turnaround_raw}")
+        inv_bau_label = get_rating_label(inv_result.bau_score)
+        print(f"  BAU: {inv_result.bau_score}/100 ({inv_bau_label})")
+        print(f"    Raw: {inv_result.bau_raw}")
+    else:
+        inv_label = get_rating_label(inv_result.display_score)
+        print(f"Investment Score: {inv_result.display_score}/100 ({inv_label})")
+        print(f"  Raw score: {inv_result.display_raw}")
 
     print(f"\n{'='*70}\n")
 

@@ -110,8 +110,8 @@ def calculate_score_at_date(
     distance_from_high = compute_distance_from_high(closes, 20)
     resilience_count = count_recovery_patterns(closes, 180)
 
-    # Calculate scores (v1.1)
-    trade_raw, trade_score = calculate_trade_score(
+    # Calculate scores (v1.3 - returns ScoreResult)
+    trade_result = calculate_trade_score(
         current_price=current_price,
         macd_bias=macd.bias if macd else None,
         macd_hist=macd.hist if macd else None,
@@ -130,7 +130,7 @@ def calculate_score_at_date(
         closes=closes
     )
 
-    inv_raw, inv_score = calculate_investment_score(
+    inv_result = calculate_investment_score(
         current_price=current_price,
         macd_bias=macd.bias if macd else None,
         macd_hist=macd.hist if macd else None,
@@ -149,7 +149,8 @@ def calculate_score_at_date(
         closes=closes
     )
 
-    return trade_score, inv_score
+    # Return display scores (turnaround if active, else BAU)
+    return trade_result.display_score, inv_result.display_score
 
 
 def get_price_at_date(ticker: str, target_date: datetime, db: Database) -> Optional[float]:

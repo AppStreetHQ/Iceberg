@@ -100,8 +100,8 @@ class TechnicalPanel(Widget):
         distance_from_high = compute_distance_from_high(closes, 20)
         resilience_count = count_recovery_patterns(closes, 180)
 
-        # Calculate Iceberg Scores (v1.1)
-        trade_raw, trade_score = calculate_trade_score(
+        # Calculate Iceberg Scores (v1.3 - returns ScoreResult)
+        trade_result = calculate_trade_score(
             current_price=current_price,
             macd_bias=macd.bias if macd else None,
             macd_hist=macd.hist if macd else None,
@@ -120,7 +120,7 @@ class TechnicalPanel(Widget):
             closes=closes
         )
 
-        inv_raw, inv_score = calculate_investment_score(
+        inv_result = calculate_investment_score(
             current_price=current_price,
             macd_bias=macd.bias if macd else None,
             macd_hist=macd.hist if macd else None,
@@ -145,28 +145,34 @@ class TechnicalPanel(Widget):
         # Title
         display.append(f"{self.current_ticker} - Technical Analysis", style="bold bright_white")
         display.append("\n\n")
-        display.append("Iceberg™ Score System v1.2", style="#00ffff")
+        display.append("Iceberg™ Score System v1.3", style="#00ffff")
         display.append("\n\n")
 
-        # Iceberg Scores
+        # Iceberg Scores - use display_score from ScoreResult
+        trade_score = trade_result.display_score
         trade_label = get_rating_label(trade_score)
         trade_color = get_rating_color(trade_score)
         trade_bar = generate_score_bar(trade_score, width=20)
 
+        inv_score = inv_result.display_score
         inv_label = get_rating_label(inv_score)
         inv_color = get_rating_color(inv_score)
         inv_bar = generate_score_bar(inv_score, width=20)
 
+        # Add turnaround indicator if active
+        trade_suffix = " ⚡" if trade_result.turnaround_active else ""
+        inv_suffix = " ⚡" if inv_result.turnaround_active else ""
+
         display.append("Trade Score:      ", style="bold white")
         display.append(f"{trade_score}/100 ", style=trade_color)
         display.append(trade_bar, style=trade_color)
-        display.append(f"  {trade_label}", style=trade_color)
+        display.append(f"  {trade_label}{trade_suffix}", style=trade_color)
         display.append("\n")
 
         display.append("Investment Score: ", style="bold white")
         display.append(f"{inv_score}/100 ", style=inv_color)
         display.append(inv_bar, style=inv_color)
-        display.append(f"  {inv_label}", style=inv_color)
+        display.append(f"  {inv_label}{inv_suffix}", style=inv_color)
         display.append("\n")
 
         display.append("─" * 40, style="#333333")

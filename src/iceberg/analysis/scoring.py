@@ -8,7 +8,10 @@ which provides two perspectives on stock signals:
 
 See ICEBERG_INDEX.md for full methodology documentation.
 
-Version: 1.2 (2024-12-24)
+Version: 1.3 (2024-12-24)
+- v1.3: "Proven Winner Capitulation" pattern for extreme high-confidence setups
+- v1.3: Trade +120, Investment +100 bonuses for clear-cut capitulation opportunities
+- v1.3: Very specific criteria: rally >40%, drop >30%, RSI <20, back at support
 - v1.2: Fixed post-shock recovery to use historical strength (not current uptrend)
 - v1.2: Tuned post-shock bonus to +60 (HOLD rating that balances opportunity vs risk)
 - v1.1: Added resilience-based scoring
@@ -19,11 +22,32 @@ Version: 1.2 (2024-12-24)
 """
 
 from typing import Optional, Tuple, List
+from dataclasses import dataclass
 from .models import MACDBias, RSIBias, TrendBias, VolatilityBias
 
 
+@dataclass
+class ScoreResult:
+    """Result containing both turnaround and BAU scores."""
+    turnaround_raw: int
+    turnaround_score: int
+    bau_raw: int
+    bau_score: int
+    turnaround_active: bool
+
+    @property
+    def display_score(self) -> int:
+        """Primary score to display (turnaround if active, else BAU)."""
+        return self.turnaround_score if self.turnaround_active else self.bau_score
+
+    @property
+    def display_raw(self) -> int:
+        """Primary raw score to display."""
+        return self.turnaround_raw if self.turnaround_active else self.bau_raw
+
+
 # ============================================================================
-# TRADE SCORE WEIGHTS v1.2 (Total: ±85 base + up to 105 bonus = ±190 max)
+# TRADE SCORE WEIGHTS v1.3 (Total: ±85 base + up to 225 bonus = ±310 max)
 # ============================================================================
 
 TRADE_MACD_WEIGHT = 25          # Momentum indicator
@@ -31,16 +55,17 @@ TRADE_RSI_WEIGHT = 15           # Strength/extremes (context-aware)
 TRADE_SMA10_WEIGHT = 20         # Immediate trend
 TRADE_TREND10_WEIGHT = 20       # Recovery confirmation
 TRADE_VOLATILITY_WEIGHT = 5     # Risk/opportunity (resilience-aware)
-TRADE_RECOVERY_BONUS = 20       # Original recovery pattern (up from 15)
-TRADE_POST_SHOCK_BONUS = 60     # Post-shock recovery pattern (v1.2: HOLD rating, balances opportunity vs risk)
-TRADE_CHEAP_WINNER_BONUS = 15   # Cheap on a winner pattern (NEW)
-TRADE_RSI_OVERSOLD_BONUS = 10   # Extra bonus for oversold + uptrend (NEW)
+TRADE_RECOVERY_BONUS = 20        # Original recovery pattern (up from 15)
+TRADE_POST_SHOCK_BONUS = 60      # Post-shock recovery pattern (v1.2: broad cases)
+TRADE_CAPITULATION_BONUS = 120   # Proven winner capitulation (v1.3: extreme high-confidence setups)
+TRADE_CHEAP_WINNER_BONUS = 15    # Cheap on a winner pattern (v1.1)
+TRADE_RSI_OVERSOLD_BONUS = 10    # Extra bonus for oversold + uptrend (v1.1)
 
 TRADE_MAX_BASE_POINTS = 85
 
 
 # ============================================================================
-# INVESTMENT SCORE WEIGHTS v1.2 (Total: ±90 base + up to 105 bonus = ±195 max)
+# INVESTMENT SCORE WEIGHTS v1.3 (Total: ±90 base + up to 205 bonus = ±295 max)
 # ============================================================================
 
 INV_MACD_WEIGHT = 15            # Momentum alignment
@@ -49,10 +74,11 @@ INV_SMA50_WEIGHT = 20           # Recent growth baseline
 INV_TREND50_WEIGHT = 20         # Medium-term trend
 INV_PRICE_VS_SMA50_WEIGHT = 15  # Distance from normal
 INV_VOLATILITY_WEIGHT = 10      # Risk measure (resilience-aware)
-INV_RECOVERY_BONUS = 20         # Original recovery pattern (up from 15)
-INV_POST_SHOCK_BONUS = 60       # Post-shock recovery pattern (v1.2: HOLD rating, balances opportunity vs risk)
-INV_CHEAP_WINNER_BONUS = 15     # Cheap on a winner pattern (NEW)
-INV_RSI_OVERSOLD_BONUS = 10     # Extra bonus for oversold + uptrend (NEW)
+INV_RECOVERY_BONUS = 20          # Original recovery pattern (up from 15)
+INV_POST_SHOCK_BONUS = 60        # Post-shock recovery pattern (v1.2: broad cases)
+INV_CAPITULATION_BONUS = 100     # Proven winner capitulation (v1.3: extreme high-confidence setups)
+INV_CHEAP_WINNER_BONUS = 15      # Cheap on a winner pattern (v1.1)
+INV_RSI_OVERSOLD_BONUS = 10      # Extra bonus for oversold + uptrend (v1.1)
 
 INV_MAX_BASE_POINTS = 90
 
@@ -453,6 +479,96 @@ def detect_cheap_on_winner(
     )
 
 
+def detect_proven_winner_capitulation(
+    current_price: float,
+    closes: Optional[List[float]],
+    sma100: Optional[float],
+    rsi_value: Optional[float],
+    distance_from_high: Optional[float]
+) -> bool:
+    """
+    Detect "proven winner capitulation" pattern (v1.3 NEW).
+
+    Extremely specific, high-confidence pattern for stocks with recent
+    proven strength that have capitulated to extreme oversold levels.
+
+    Pattern criteria (ALL must be true):
+    1. Stock rallied >40% in past 90 days (proven it can run)
+    2. Then dropped >30% from that high (sharp correction)
+    3. RSI < 20 (extreme panic, not just oversold)
+    4. Price near or below where rally started (back at support)
+    5. Was above SMA(100) during rally (confirmed strength)
+
+    This is VERY specific - designed to catch clear-cut capitulation
+    opportunities like RKLB Nov 21 at $40 (after Jul-Sep rally).
+
+    Args:
+        current_price: Current stock price
+        closes: List of closing prices (need 90+ days)
+        sma100: 100-day SMA
+        rsi_value: RSI value
+        distance_from_high: % distance from recent high
+
+    Returns:
+        True if proven winner capitulation detected
+    """
+    # Need sufficient data
+    if not closes or len(closes) < 90:
+        return False
+
+    # Criterion 3: RSI < 20 (extreme panic)
+    if rsi_value is None or rsi_value >= 20:
+        return False
+
+    # Criterion 2: Dropped >30% from high
+    if distance_from_high is None or distance_from_high > -30:
+        return False
+
+    # Find the peak in past 90 days (the top before the crash)
+    lookback_90d = closes[-90:]
+    rally_peak_price = max(lookback_90d)
+    peak_idx = len(closes) - 90 + lookback_90d.index(rally_peak_price)
+
+    # Find the rally start: lowest point BEFORE the peak (in first half of lookback)
+    # This avoids finding the current price as the "start"
+    prices_before_peak = closes[max(0, len(closes)-90):peak_idx+1]
+    if len(prices_before_peak) < 30:  # Need reasonable data before peak
+        return False
+
+    rally_start_price = min(prices_before_peak)
+    rally_start_idx = max(0, len(closes)-90) + prices_before_peak.index(rally_start_price)
+
+    # Criterion 1: Rally >40% from start to peak
+    rally_gain_pct = ((rally_peak_price - rally_start_price) / rally_start_price) * 100
+    if rally_gain_pct < 40:
+        return False
+
+    # Criterion 4: Price near or below rally start (back at support)
+    # Allow some tolerance - within 10% above rally start
+    if current_price > rally_start_price * 1.10:
+        return False
+
+    # Criterion 5: Was above SMA(100) during the rally
+    # Check if price was above SMA100 at any point during rally
+    if sma100 is None:
+        return False
+
+    was_above_sma100 = False
+    for i in range(rally_start_idx, len(closes)):
+        # Calculate SMA100 at this point in time
+        if i >= 100:
+            historical_sma100 = sum(closes[i-100:i]) / 100
+            if closes[i] > historical_sma100:
+                was_above_sma100 = True
+                break
+
+    if not was_above_sma100:
+        return False
+
+    # All criteria met - this is a proven winner capitulation!
+    return True
+
+
 # ============================================================================
 # MAIN SCORING FUNCTIONS
 # ============================================================================
@@ -535,27 +651,60 @@ def calculate_trade_score(
             bonus = int(bonus * RESILIENCE_MULTIPLIER_LOW)
         score += bonus
 
-    # Post-shock recovery pattern (v1.2 UPDATED)
-    if detect_post_shock_recovery(
+    # Check pattern detections
+    capitulation_detected = detect_proven_winner_capitulation(
+        current_price, closes, sma100, rsi_value, distance_from_high
+    )
+    post_shock_detected = detect_post_shock_recovery(
         current_price, distance_from_high, rsi_value, macd_hist, long_term_trend,
         closes=closes, sma100=sma100
-    ):
-        bonus = TRADE_POST_SHOCK_BONUS
-        # Apply resilience multiplier
+    )
+    cheap_winner_detected = detect_cheap_on_winner(
+        current_price, sma20, sma100, long_term_trend, rsi_value
+    )
+
+    # Calculate TURNAROUND score (uses capitulation bonus if detected)
+    turnaround_score = score  # Start with base score
+    if capitulation_detected:
+        bonus = TRADE_CAPITULATION_BONUS
         if resilience_count >= RESILIENCE_HIGH:
             bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
-        score += bonus
+        turnaround_score += bonus
+    elif post_shock_detected:
+        bonus = TRADE_POST_SHOCK_BONUS
+        if resilience_count >= RESILIENCE_HIGH:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        turnaround_score += bonus
 
-    # Cheap on a winner pattern (v1.1 NEW)
-    if detect_cheap_on_winner(
-        current_price, sma20, sma100, long_term_trend, rsi_value
-    ):
-        score += TRADE_CHEAP_WINNER_BONUS
+    if cheap_winner_detected:
+        turnaround_score += TRADE_CHEAP_WINNER_BONUS
 
-    # Normalize to 0-100 scale (v1.1 max points increased)
-    normalized = normalize_score(score, max_points=150)
+    # Calculate BAU score (uses post-shock bonus, not capitulation)
+    bau_score = score  # Start with base score
+    if post_shock_detected:
+        bonus = TRADE_POST_SHOCK_BONUS
+        if resilience_count >= RESILIENCE_HIGH:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        bau_score += bonus
 
-    return score, normalized
+    if cheap_winner_detected:
+        bau_score += TRADE_CHEAP_WINNER_BONUS
+
+    # Check if turnaround mode is active
+    # Active when: Capitulation detected AND price still below SMA(50)
+    turnaround_active = capitulation_detected and (sma50 is not None and current_price < sma50)
+
+    # Normalize both scores to 0-100 scale (v1.3 max points: 310)
+    turnaround_normalized = normalize_score(turnaround_score, max_points=310)
+    bau_normalized = normalize_score(bau_score, max_points=310)
+
+    return ScoreResult(
+        turnaround_raw=turnaround_score,
+        turnaround_score=turnaround_normalized,
+        bau_raw=bau_score,
+        bau_score=bau_normalized,
+        turnaround_active=turnaround_active
+    )
 
 
 def calculate_investment_score(
@@ -640,27 +789,60 @@ def calculate_investment_score(
             bonus = int(bonus * RESILIENCE_MULTIPLIER_LOW)
         score += bonus
 
-    # Post-shock recovery pattern (v1.2 UPDATED)
-    if detect_post_shock_recovery(
+    # Check pattern detections
+    capitulation_detected = detect_proven_winner_capitulation(
+        current_price, closes, sma100, rsi_value, distance_from_high
+    )
+    post_shock_detected = detect_post_shock_recovery(
         current_price, distance_from_high, rsi_value, macd_hist, long_term_trend,
         closes=closes, sma100=sma100
-    ):
-        bonus = INV_POST_SHOCK_BONUS
-        # Apply resilience multiplier
+    )
+    cheap_winner_detected = detect_cheap_on_winner(
+        current_price, sma20, sma100, long_term_trend, rsi_value
+    )
+
+    # Calculate TURNAROUND score (uses capitulation bonus if detected)
+    turnaround_score = score  # Start with base score
+    if capitulation_detected:
+        bonus = INV_CAPITULATION_BONUS
         if resilience_count >= RESILIENCE_HIGH:
             bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
-        score += bonus
+        turnaround_score += bonus
+    elif post_shock_detected:
+        bonus = INV_POST_SHOCK_BONUS
+        if resilience_count >= RESILIENCE_HIGH:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        turnaround_score += bonus
 
-    # Cheap on a winner pattern (v1.1 NEW)
-    if detect_cheap_on_winner(
-        current_price, sma20, sma100, long_term_trend, rsi_value
-    ):
-        score += INV_CHEAP_WINNER_BONUS
+    if cheap_winner_detected:
+        turnaround_score += INV_CHEAP_WINNER_BONUS
 
-    # Normalize to 0-100 scale (v1.1 max points increased)
-    normalized = normalize_score(score, max_points=155)
+    # Calculate BAU score (uses post-shock bonus, not capitulation)
+    bau_score = score  # Start with base score
+    if post_shock_detected:
+        bonus = INV_POST_SHOCK_BONUS
+        if resilience_count >= RESILIENCE_HIGH:
+            bonus = int(bonus * RESILIENCE_MULTIPLIER_HIGH)
+        bau_score += bonus
 
-    return score, normalized
+    if cheap_winner_detected:
+        bau_score += INV_CHEAP_WINNER_BONUS
+
+    # Check if turnaround mode is active
+    # Active when: Capitulation detected AND price still below SMA(50)
+    turnaround_active = capitulation_detected and (sma50 is not None and current_price < sma50)
+
+    # Normalize both scores to 0-100 scale (v1.3 max points: 295)
+    turnaround_normalized = normalize_score(turnaround_score, max_points=295)
+    bau_normalized = normalize_score(bau_score, max_points=295)
+
+    return ScoreResult(
+        turnaround_raw=turnaround_score,
+        turnaround_score=turnaround_normalized,
+        bau_raw=bau_score,
+        bau_score=bau_normalized,
+        turnaround_active=turnaround_active
+    )
 
 
 # ============================================================================
