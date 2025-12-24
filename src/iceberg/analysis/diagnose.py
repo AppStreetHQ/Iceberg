@@ -213,8 +213,8 @@ def diagnose_date(ticker: str, target_date: str):
     )
     print(f"Proven Winner Capitulation (v1.3): {'✓ DETECTED' if capitulation else '✗ Not detected'}")
     if capitulation:
-        print(f"  → Trade Bonus: +120 (× {1.2 if resilience_count >= 3 else 1.0} resilience)")
-        print(f"  → Investment Bonus: +100 (× {1.2 if resilience_count >= 3 else 1.0} resilience)")
+        print(f"  → Trade Bonus: +205 (× {1.2 if resilience_count >= 3 else 1.0} resilience) - AGGRESSIVE for swing trades")
+        print(f"  → Investment Bonus: +60 (× {1.2 if resilience_count >= 3 else 1.0} resilience) - CAUTIOUS for positions")
         if sma50:
             print(f"  → Turnaround mode ACTIVE until price crosses ${sma50:.2f} (SMA 50)")
 

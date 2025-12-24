@@ -47,7 +47,7 @@ class ScoreResult:
 
 
 # ============================================================================
-# TRADE SCORE WEIGHTS v1.3 (Total: ±85 base + up to 225 bonus = ±310 max)
+# TRADE SCORE WEIGHTS v1.3 (Total: ±85 base + up to 310 bonus = ±395 max)
 # ============================================================================
 
 TRADE_MACD_WEIGHT = 25          # Momentum indicator
@@ -57,7 +57,7 @@ TRADE_TREND10_WEIGHT = 20       # Recovery confirmation
 TRADE_VOLATILITY_WEIGHT = 5     # Risk/opportunity (resilience-aware)
 TRADE_RECOVERY_BONUS = 20        # Original recovery pattern (up from 15)
 TRADE_POST_SHOCK_BONUS = 60      # Post-shock recovery pattern (v1.2: broad cases)
-TRADE_CAPITULATION_BONUS = 120   # Proven winner capitulation (v1.3: extreme high-confidence setups)
+TRADE_CAPITULATION_BONUS = 205   # Proven winner capitulation (v1.3: AGGRESSIVE for traders)
 TRADE_CHEAP_WINNER_BONUS = 15    # Cheap on a winner pattern (v1.1)
 TRADE_RSI_OVERSOLD_BONUS = 10    # Extra bonus for oversold + uptrend (v1.1)
 
@@ -65,7 +65,7 @@ TRADE_MAX_BASE_POINTS = 85
 
 
 # ============================================================================
-# INVESTMENT SCORE WEIGHTS v1.3 (Total: ±90 base + up to 205 bonus = ±295 max)
+# INVESTMENT SCORE WEIGHTS v1.3 (Total: ±90 base + up to 165 bonus = ±255 max)
 # ============================================================================
 
 INV_MACD_WEIGHT = 15            # Momentum alignment
@@ -76,7 +76,7 @@ INV_PRICE_VS_SMA50_WEIGHT = 15  # Distance from normal
 INV_VOLATILITY_WEIGHT = 10      # Risk measure (resilience-aware)
 INV_RECOVERY_BONUS = 20          # Original recovery pattern (up from 15)
 INV_POST_SHOCK_BONUS = 60        # Post-shock recovery pattern (v1.2: broad cases)
-INV_CAPITULATION_BONUS = 100     # Proven winner capitulation (v1.3: extreme high-confidence setups)
+INV_CAPITULATION_BONUS = 60      # Proven winner capitulation (v1.3: CAUTIOUS for investors)
 INV_CHEAP_WINNER_BONUS = 15      # Cheap on a winner pattern (v1.1)
 INV_RSI_OVERSOLD_BONUS = 10      # Extra bonus for oversold + uptrend (v1.1)
 
@@ -694,9 +694,9 @@ def calculate_trade_score(
     # Active when: Capitulation detected AND price still below SMA(50)
     turnaround_active = capitulation_detected and (sma50 is not None and current_price < sma50)
 
-    # Normalize both scores to 0-100 scale (v1.3 max points: 310)
-    turnaround_normalized = normalize_score(turnaround_score, max_points=310)
-    bau_normalized = normalize_score(bau_score, max_points=310)
+    # Normalize both scores to 0-100 scale (v1.3 max points: 395)
+    turnaround_normalized = normalize_score(turnaround_score, max_points=395)
+    bau_normalized = normalize_score(bau_score, max_points=395)
 
     return ScoreResult(
         turnaround_raw=turnaround_score,
@@ -832,9 +832,9 @@ def calculate_investment_score(
     # Active when: Capitulation detected AND price still below SMA(50)
     turnaround_active = capitulation_detected and (sma50 is not None and current_price < sma50)
 
-    # Normalize both scores to 0-100 scale (v1.3 max points: 295)
-    turnaround_normalized = normalize_score(turnaround_score, max_points=295)
-    bau_normalized = normalize_score(bau_score, max_points=295)
+    # Normalize both scores to 0-100 scale (v1.3 max points: 255)
+    turnaround_normalized = normalize_score(turnaround_score, max_points=255)
+    bau_normalized = normalize_score(bau_score, max_points=255)
 
     return ScoreResult(
         turnaround_raw=turnaround_score,
