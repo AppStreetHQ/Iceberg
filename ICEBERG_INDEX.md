@@ -516,7 +516,337 @@ These findings inform v1.3 development.
 
 ---
 
+# Iceberg Score System v1.3 - Turnaround Rating & Trade/Investment Differentiation
+
+**Released:** 2024-12-24
+**Status:** Production
+
+## The Innovation: Dual-Rating Architecture
+
+v1.3 introduces a breakthrough approach to the calibration dilemma: How to flag extreme opportunities (RSI <20, -40% drops) without being reckless when all indicators scream danger?
+
+**Solution:** Show BOTH perspectives simultaneously.
+
+### The Turnaround Rating System
+
+When proven winner capitulation is detected, v1.3 displays TWO scores:
+
+1. **Turnaround Rating** ⚡ - Aggressive signal for the opportunity
+2. **BAU Rating** (Business As Usual) - Conservative baseline view
+
+The turnaround rating stays active while:
+- Capitulation pattern is detected AND
+- Price remains below SMA(50)
+
+Once price crosses above SMA(50) OR capitulation conditions ease (RSI recovers, price bounces), the system reverts to normal single-score display.
+
+### Proven Winner Capitulation Pattern (v1.3)
+
+Extremely specific, high-confidence pattern requiring **ALL** criteria:
+
+1. **Rally >40%** in past 90 days (proven it can run)
+2. **Drop >30%** from that peak (sharp correction)
+3. **RSI < 20** (extreme panic, beyond normal oversold)
+4. **Price near/below rally start** (back at support level)
+5. **Was above SMA(100)** during rally (confirmed strength)
+
+This pattern is MORE restrictive than post-shock recovery (v1.2) and targets the absolute highest-confidence extreme setups.
+
+### Trade vs Investment Differentiation
+
+v1.3 dramatically widens the gap between trade and investment scores on capitulation setups, reflecting their fundamentally different risk profiles:
+
+**Capitulation Bonuses:**
+- Trade: +205 (AGGRESSIVE - traders thrive on volatility)
+- Investment: +60 (CAUTIOUS - investors need confirmation)
+- Gap: +145 differential
+
+**Rationale:**
+
+**Traders** on extreme setups:
+- Can watch tick-by-tick and time precise entries
+- Use tight stops to limit downside
+- 0-7 day holds, out before next leg down
+- Volatility = profit opportunity
+- Want BUY signals at bottoms
+
+**Investors** on extreme setups:
+- Holding weeks/months through continued volatility
+- Can't day-trade out of trouble
+- Need confirmation the bottom is in
+- Volatility = unacceptable risk
+- Want to wait for stability
+
+**Result:** Investors can see that traders are getting BUY signals, providing valuable context about the opportunity without being pushed into risky positions inappropriate for their time horizon.
+
+## Example: RKLB November 21, 2025
+
+**Market Conditions:**
+- Price: $39.48 (-9.49% day, -40.33% from high)
+- RSI: 11.9 (extreme panic)
+- All trends: DOWN
+- Volatility: WILD (5.52% daily σ)
+- Resilience: 0 recoveries in 6 months
+
+**Pattern Detection:**
+```
+✓ Post-Shock Recovery (v1.2)
+✓ Proven Winner Capitulation (v1.3)
+  → Rally detected: $33.36 → $66.13 (+98% in 90 days)
+  → Drop: -40% from peak
+  → RSI: 11.9 (extreme panic)
+  → Price at rally support: $39.48 vs start $33.36
+  → Was above SMA(100) during rally: ✓
+```
+
+**Scoring:**
+```
+🔥 TURNAROUND MODE ACTIVE (price $39.48 < SMA(50) $55.34)
+
+Trade Score:
+  Turnaround: 70/100 (BUY) ⚡        ← "Swing trade this NOW"
+  BAU: 51/100 (HOLD)                ← "Too risky normally"
+
+Investment Score:
+  Turnaround: 46/100 (HOLD) ⚡       ← "Too volatile, wait"
+  BAU: 46/100 (HOLD)                ← "Same, stay out"
+```
+
+**Outcome:** +88% gain over 3 months
+
+**Analysis:**
+- Trade Turnaround (70 BUY) correctly flagged the extreme opportunity for swing traders
+- Investment Turnaround (46 HOLD) appropriately cautioned long-term holders
+- 24-point gap clearly differentiates risk tolerance
+- Both audiences served with same underlying analysis
+
+## December 4 Follow-up: Turnaround Ended
+
+**Market Conditions:**
+- Price: $43.91 (+11% from Nov 21)
+- RSI: 46.1 (recovered from panic)
+- Distance from high: -15.39% (recovered from -40%)
+- Trend(10): UP (short-term recovery confirmed)
+
+**Pattern Detection:**
+```
+✓ Post-Shock Recovery (v1.2) - still active
+✗ Proven Winner Capitulation (v1.3) - ended (RSI > 20, drop < 30%)
+```
+
+**Scoring:**
+```
+Trade Score: 68/100 (OUTPERFORM)    ← Normal scoring resumed
+Investment Score: 51/100 (HOLD)     ← Rally not confirmed yet
+```
+
+**Analysis:**
+- Capitulation pattern correctly ended when panic eased
+- Price still below SMA(50) but RSI recovered and drop reduced
+- Trade score remains elevated (rally forming)
+- Investment score cautious (waiting for sustained trend)
+
+## Technical Implementation
+
+### ScoreResult Dataclass
+
+```python
+@dataclass
+class ScoreResult:
+    turnaround_raw: int
+    turnaround_score: int
+    bau_raw: int
+    bau_score: int
+    turnaround_active: bool
+
+    @property
+    def display_score(self) -> int:
+        return self.turnaround_score if self.turnaround_active else self.bau_score
+```
+
+### Capitulation Detection
+
+```python
+def detect_proven_winner_capitulation(
+    current_price: float,
+    closes: Optional[List[float]],
+    sma100: Optional[float],
+    rsi_value: Optional[float],
+    distance_from_high: Optional[float]
+) -> bool:
+    # Criterion 1: RSI < 20 (extreme panic)
+    if rsi_value is None or rsi_value >= 20:
+        return False
+
+    # Criterion 2: Dropped >30% from high
+    if distance_from_high is None or distance_from_high > -30:
+        return False
+
+    # Find peak in past 90 days
+    lookback_90d = closes[-90:]
+    rally_peak_price = max(lookback_90d)
+    peak_idx = len(closes) - 90 + lookback_90d.index(rally_peak_price)
+
+    # Find rally start BEFORE peak
+    prices_before_peak = closes[max(0, len(closes)-90):peak_idx+1]
+    rally_start_price = min(prices_before_peak)
+
+    # Criterion 3: Rally >40%
+    rally_gain_pct = ((rally_peak_price - rally_start_price) / rally_start_price) * 100
+    if rally_gain_pct < 40:
+        return False
+
+    # Criterion 4: Price near/below rally start
+    if current_price > rally_start_price * 1.10:
+        return False
+
+    # Criterion 5: Was above SMA(100) during rally
+    # (Check historical SMA100 at rally points)
+    ...
+
+    return True
+```
+
+### Scoring Logic
+
+Both `calculate_trade_score()` and `calculate_investment_score()` now return `ScoreResult`:
+
+```python
+# Calculate TURNAROUND score (uses capitulation bonus if detected)
+turnaround_score = base_score
+if capitulation_detected:
+    bonus = TRADE_CAPITULATION_BONUS  # +205 for trade, +60 for investment
+    if resilience_count >= 3:
+        bonus = int(bonus * 1.2)
+    turnaround_score += bonus
+elif post_shock_detected:
+    turnaround_score += POST_SHOCK_BONUS  # +60
+
+# Calculate BAU score (uses post-shock only, not capitulation)
+bau_score = base_score
+if post_shock_detected:
+    bau_score += POST_SHOCK_BONUS
+
+# Turnaround active if: capitulation detected AND price < SMA(50)
+turnaround_active = capitulation_detected and (current_price < sma50)
+
+return ScoreResult(
+    turnaround_raw=turnaround_score,
+    turnaround_score=normalize_score(turnaround_score, max_points),
+    bau_raw=bau_score,
+    bau_score=normalize_score(bau_score, max_points),
+    turnaround_active=turnaround_active
+)
+```
+
+## Calibration Philosophy
+
+### The Three-Pattern Hierarchy
+
+v1.3 now has three recovery patterns with different confidence levels:
+
+1. **Recovery Pattern (v1.0):** +20 bonus
+   - Price crossing above SMA(10) and SMA(50)
+   - 10-day and 50-day trends both UP
+   - Broad pattern, catches many recoveries
+
+2. **Post-Shock Recovery (v1.2):** +60 bonus
+   - Drop >10% from 20-day high (shock happened)
+   - Was above SMA(100) in past 60 days (historical strength)
+   - Early recovery signals (RSI >20 or stabilizing)
+   - More selective, requires proven quality
+
+3. **Proven Winner Capitulation (v1.3):** Trade +205, Investment +60
+   - ALL five criteria must be met
+   - Extreme panic (RSI <20) after proven rally (>40%)
+   - Highest confidence, rarest pattern
+   - Different bonuses for trade vs investment risk profiles
+
+### Maximum Points
+
+- **Trade Score:** ±85 base + up to 310 bonus = ±395 max
+- **Investment Score:** ±90 base + up to 165 bonus = ±255 max
+
+The asymmetry reflects traders' higher tolerance for volatility on extreme setups.
+
+## Display Format
+
+### TUI (Technical Panel)
+
+When turnaround active, scores show with ⚡ indicator:
+
+```
+Iceberg™ Score System v1.3
+
+Trade Score:      70/100 ████████████████████  BUY ⚡
+Investment Score: 46/100 █████████             HOLD ⚡
+```
+
+### Diagnostic Tool (diagnose.py)
+
+Full breakdown when turnaround active:
+
+```
+🔥 TURNAROUND MODE ACTIVE (price below SMA(50): $55.34)
+
+Trade Score:
+  Turnaround: 70/100 (BUY) ⚡
+    Raw: 156
+  BAU: 51/100 (HOLD)
+    Raw: 11
+
+Investment Score:
+  Turnaround: 46/100 (HOLD) ⚡
+    Raw: -22
+  BAU: 46/100 (HOLD)
+    Raw: -22
+```
+
+### Backtest (backtest.py)
+
+Uses `display_score` property (turnaround if active, else BAU) to show what user would have seen historically.
+
+## Strengths
+
+1. **Flags extreme opportunities** without ignoring risk (dual perspective)
+2. **Serves both audiences** (traders get BUY, investors see context)
+3. **Auto-reverts** when opportunity window closes
+4. **Highly selective** (all five criteria = high confidence)
+5. **Clear differentiation** (24-point gap on RKLB Nov 21)
+
+## Limitations
+
+1. **No fundamental data** - relies purely on price/volume behavior
+2. **Trade/Investment distinction** - both still use technical indicators, not fundamentally different purposes
+3. **Rare pattern** - very few stocks meet all five capitulation criteria
+4. **Backward-looking** - can't predict if bottom is truly in
+5. **Volatility timing** - even BUY signal can experience continued drawdown
+
+## Open Questions
+
+**Should Trade and Investment scores measure different things entirely?**
+
+Currently both use technical indicators (MACD, RSI, SMAs, trends) with different weights and timeframes. This is calibration, not fundamentally different purposes.
+
+Potential evolution:
+- Trade Score: Keep as timing/momentum signal
+- Investment Score: Measure business quality (resilience, consistency, drawdown resistance, time above SMA100)
+
+Without fundamental data, can we infer "investment quality" from price behavior alone?
+
+---
+
 ## Version History
+
+### v1.3 - 2024-12-24
+- **Turnaround Rating System:** Dual-score architecture (Turnaround + BAU) for extreme setups
+- **Proven Winner Capitulation:** Five-criteria pattern (Rally >40%, Drop >30%, RSI <20, at support, was above SMA100)
+- **Trade/Investment Differentiation:** Capitulation bonuses widened (Trade +205, Investment +60, gap +145)
+- **ScoreResult dataclass:** Returns both scores with turnaround_active flag
+- **Auto-revert logic:** Turnaround ends when capitulation conditions ease OR price crosses SMA(50)
+- **Max points updated:** Trade 395 (was 310), Investment 255 (was 295)
+- **Philosophy:** Show both aggressive and conservative perspectives simultaneously
+- **RKLB Nov 21 validation:** Trade 70 (BUY), Investment 46 (HOLD), actual +88% gain
 
 ### v1.2 - 2024-12-24
 - **Fixed post-shock recovery:** Uses historical strength (not current uptrend)
@@ -547,6 +877,7 @@ These findings inform v1.3 development.
 
 ---
 
-**See Implementation:** `src/iceberg/analysis/scoring.py` (v1.2)
+**See Implementation:** `src/iceberg/analysis/scoring.py` (v1.3 - dual-score architecture)
 **See Indicators:** `src/iceberg/analysis/indicators.py` (resilience, distance from high, long-term trend)
-**See Diagnostics:** `src/iceberg/analysis/diagnose.py` (investigate specific dates)
+**See Diagnostics:** `src/iceberg/analysis/diagnose.py` (investigate specific dates, turnaround display)
+**See Backtesting:** `src/iceberg/analysis/backtest.py` (historical validation)
