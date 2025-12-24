@@ -8,12 +8,14 @@ which provides two perspectives on stock signals:
 
 See ICEBERG_INDEX.md for full methodology documentation.
 
-Version: 1.1 (2024-12-24)
-- Added resilience-based scoring
-- Enhanced recovery pattern detection (post-shock recovery)
-- Context-aware RSI and volatility scoring
-- "Cheap on a winner" detection
-- Distance from high metric
+Version: 1.2 (2024-12-24)
+- v1.2: Fixed post-shock recovery to use historical strength (not current uptrend)
+- v1.2: Tuned post-shock bonus to +60 (HOLD rating that balances opportunity vs risk)
+- v1.1: Added resilience-based scoring
+- v1.1: Enhanced recovery pattern detection (post-shock recovery)
+- v1.1: Context-aware RSI and volatility scoring
+- v1.1: "Cheap on a winner" detection
+- v1.1: Distance from high metric
 """
 
 from typing import Optional, Tuple, List
@@ -21,7 +23,7 @@ from .models import MACDBias, RSIBias, TrendBias, VolatilityBias
 
 
 # ============================================================================
-# TRADE SCORE WEIGHTS v1.1 (Total: ±85 base + up to 65 bonus = ±150 max)
+# TRADE SCORE WEIGHTS v1.2 (Total: ±85 base + up to 105 bonus = ±190 max)
 # ============================================================================
 
 TRADE_MACD_WEIGHT = 25          # Momentum indicator
@@ -30,7 +32,7 @@ TRADE_SMA10_WEIGHT = 20         # Immediate trend
 TRADE_TREND10_WEIGHT = 20       # Recovery confirmation
 TRADE_VOLATILITY_WEIGHT = 5     # Risk/opportunity (resilience-aware)
 TRADE_RECOVERY_BONUS = 20       # Original recovery pattern (up from 15)
-TRADE_POST_SHOCK_BONUS = 25     # Post-shock recovery pattern (NEW)
+TRADE_POST_SHOCK_BONUS = 60     # Post-shock recovery pattern (v1.2: HOLD rating, balances opportunity vs risk)
 TRADE_CHEAP_WINNER_BONUS = 15   # Cheap on a winner pattern (NEW)
 TRADE_RSI_OVERSOLD_BONUS = 10   # Extra bonus for oversold + uptrend (NEW)
 
@@ -38,7 +40,7 @@ TRADE_MAX_BASE_POINTS = 85
 
 
 # ============================================================================
-# INVESTMENT SCORE WEIGHTS v1.1 (Total: ±90 base + up to 65 bonus = ±155 max)
+# INVESTMENT SCORE WEIGHTS v1.2 (Total: ±90 base + up to 105 bonus = ±195 max)
 # ============================================================================
 
 INV_MACD_WEIGHT = 15            # Momentum alignment
@@ -48,7 +50,7 @@ INV_TREND50_WEIGHT = 20         # Medium-term trend
 INV_PRICE_VS_SMA50_WEIGHT = 15  # Distance from normal
 INV_VOLATILITY_WEIGHT = 10      # Risk measure (resilience-aware)
 INV_RECOVERY_BONUS = 20         # Original recovery pattern (up from 15)
-INV_POST_SHOCK_BONUS = 25       # Post-shock recovery pattern (NEW)
+INV_POST_SHOCK_BONUS = 60       # Post-shock recovery pattern (v1.2: HOLD rating, balances opportunity vs risk)
 INV_CHEAP_WINNER_BONUS = 15     # Cheap on a winner pattern (NEW)
 INV_RSI_OVERSOLD_BONUS = 10     # Extra bonus for oversold + uptrend (NEW)
 
@@ -338,20 +340,25 @@ def detect_post_shock_recovery(
     distance_from_high: Optional[float],
     rsi_value: Optional[float],
     macd_hist: Optional[float],
-    long_term_trend: Optional[TrendBias]
+    long_term_trend: Optional[TrendBias],
+    closes: Optional[List[float]] = None,
+    sma100: Optional[float] = None
 ) -> bool:
     """
-    Detect post-shock recovery pattern (v1.1 NEW).
+    Detect post-shock recovery pattern (v1.2 UPDATED).
 
     Identifies stocks recovering after sharp drops (earnings misses, etc.)
     We can't predict the shock, but we can detect the recovery.
 
+    v1.2 changes: No longer requires current long-term trend to be UP.
+    Instead, checks if stock WAS strong before the shock (historical strength).
+
     Pattern criteria:
-    - Price dropped >10% from 20-day high
-    - Long-term trend still UP (not a structural decline)
-    - Early recovery signals:
-      - RSI climbing from oversold (<35)
-      - OR MACD histogram improving (turning less negative)
+    - Price dropped >10% from 20-day high (sharp drop happened)
+    - Was above SMA(100) sometime in past 60 days (had historical strength)
+    - Early recovery signals (not in free fall):
+      - RSI > 20 (not panic selling)
+      - OR Price stabilizing (not making new lows)
 
     Use case: META at $594 after earnings drop from $785
 
@@ -359,28 +366,49 @@ def detect_post_shock_recovery(
         current_price: Current stock price
         distance_from_high: % below 20-day high (negative value)
         rsi_value: RSI value
-        macd_hist: MACD histogram value
-        long_term_trend: 100-day trend
+        macd_hist: MACD histogram value (legacy, not used in v1.2)
+        long_term_trend: 100-day trend (legacy, not used in v1.2)
+        closes: Price history for lookback check
+        sma100: 100-day SMA value
 
     Returns:
         True if post-shock recovery detected
     """
-    if distance_from_high is None or long_term_trend is None:
+    if distance_from_high is None:
         return False
 
-    # Must be down significantly from recent high
+    # Must be down significantly from recent high (sharp drop)
     if distance_from_high > -10:
         return False
 
-    # Long-term trend must still be up (not structural decline)
-    if long_term_trend != TrendBias.UP:
+    # Check historical strength: Was price above SMA(100) in past 60 days?
+    # This proves stock was strong BEFORE the shock
+    historical_strength = False
+    if closes and sma100 and len(closes) >= 60:
+        # Look at past 60 days to see if price was ever above SMA(100)
+        lookback = closes[-60:]
+        for i in range(len(lookback)):
+            # Calculate SMA(100) at each historical point
+            window = closes[:-(60-i)] if i < 59 else closes
+            if len(window) >= 100:
+                hist_sma100 = sum(window[-100:]) / 100
+                if lookback[i] > hist_sma100:
+                    historical_strength = True
+                    break
+
+    if not historical_strength:
         return False
 
-    # Early recovery signals
-    rsi_recovering = rsi_value is not None and 25 < rsi_value < 45
-    macd_improving = macd_hist is not None and macd_hist > -2
+    # Early recovery signals (relaxed - just need to not be in panic)
+    rsi_not_panic = rsi_value is not None and rsi_value > 20
 
-    return rsi_recovering or macd_improving
+    # Price stabilizing (not making new lows in past 5 days)
+    stabilizing = False
+    if closes and len(closes) >= 5:
+        recent_low = min(closes[-5:])
+        stabilizing = current_price >= recent_low * 0.98  # Within 2% of recent low
+
+    return rsi_not_panic or stabilizing
 
 
 def detect_cheap_on_winner(
@@ -507,9 +535,10 @@ def calculate_trade_score(
             bonus = int(bonus * RESILIENCE_MULTIPLIER_LOW)
         score += bonus
 
-    # Post-shock recovery pattern (v1.1 NEW)
+    # Post-shock recovery pattern (v1.2 UPDATED)
     if detect_post_shock_recovery(
-        current_price, distance_from_high, rsi_value, macd_hist, long_term_trend
+        current_price, distance_from_high, rsi_value, macd_hist, long_term_trend,
+        closes=closes, sma100=sma100
     ):
         bonus = TRADE_POST_SHOCK_BONUS
         # Apply resilience multiplier
@@ -611,9 +640,10 @@ def calculate_investment_score(
             bonus = int(bonus * RESILIENCE_MULTIPLIER_LOW)
         score += bonus
 
-    # Post-shock recovery pattern (v1.1 NEW)
+    # Post-shock recovery pattern (v1.2 UPDATED)
     if detect_post_shock_recovery(
-        current_price, distance_from_high, rsi_value, macd_hist, long_term_trend
+        current_price, distance_from_high, rsi_value, macd_hist, long_term_trend,
+        closes=closes, sma100=sma100
     ):
         bonus = INV_POST_SHOCK_BONUS
         # Apply resilience multiplier
