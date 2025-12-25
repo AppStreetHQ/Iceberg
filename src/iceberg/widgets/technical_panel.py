@@ -145,7 +145,7 @@ class TechnicalPanel(Widget):
         # Title
         display.append(f"{self.current_ticker} - Technical Analysis", style="bold bright_white")
         display.append("\n\n")
-        display.append("Iceberg™ Score System v1.4.1", style="#00ffff")
+        display.append("Iceberg™ Score System v1.4.2", style="#00ffff")
         display.append("\n\n")
 
         # Iceberg Scores - use display_score from ScoreResult

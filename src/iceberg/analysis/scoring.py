@@ -3,27 +3,28 @@ Iceberg Score System - Dual-score rating for stocks
 
 This module implements the proprietary Iceberg Score calculation,
 which provides two perspectives on stock signals:
-- Trade Score: Short-term momentum and entry timing
-- Investment Score: Long-term trend and value assessment
+- Trade Score: Short-term momentum and entry timing (days/weeks)
+- Investment Score: Long-term quality and value assessment (months/years)
 
 See ICEBERG_INDEX.md for full methodology documentation.
 
-Version: 1.3 (2024-12-24)
+Version: 1.4.2 (2025-12-25)
+- v1.4.2: INVERTED Investment Score - low raw scores = best long-term entries (quality dips)
+- v1.4.2: Raised OUTPERFORM threshold (55→60) for selectivity
+- v1.4.2: Reduced momentum bonuses by 50% (rally, return-to-highs, trend slope, winner's premium)
+- v1.4.2: Added contrarian value entry bonuses (+30 for 10-20% pullbacks, -40 peak penalty)
+- v1.4.2: Reduced Investment pattern bonuses (post-shock 60→30, cheap winner 15→5)
+- v1.4.2: Block pattern bonuses on severe declines (slope < -30%)
+- v1.4.2: Increased penalties for negative growth (-15→-40) and steep declines (-40 at <-30% slope)
 - v1.3: "Proven Winner Capitulation" pattern for extreme high-confidence setups
-- v1.3: Trade +120, Investment +100 bonuses for clear-cut capitulation opportunities
-- v1.3: Very specific criteria: rally >40%, drop >30%, RSI <20, back at support
 - v1.2: Fixed post-shock recovery to use historical strength (not current uptrend)
-- v1.2: Tuned post-shock bonus to +60 (HOLD rating that balances opportunity vs risk)
-- v1.1: Added resilience-based scoring
-- v1.1: Enhanced recovery pattern detection (post-shock recovery)
-- v1.1: Context-aware RSI and volatility scoring
-- v1.1: "Cheap on a winner" detection
-- v1.1: Distance from high metric
+- v1.1: Added resilience-based scoring and distance from high metric
 """
 
 from typing import Optional, Tuple, List
 from dataclasses import dataclass
 from .models import MACDBias, RSIBias, TrendBias, VolatilityBias
+from .indicators import compute_distance_from_high, compute_rally_magnitude, compute_growth_rate, compute_return_to_highs_frequency, compute_trend_slope
 
 
 @dataclass
@@ -75,9 +76,9 @@ INV_TREND50_WEIGHT = 20         # Medium-term trend
 INV_PRICE_VS_SMA50_WEIGHT = 15  # Distance from normal
 INV_VOLATILITY_WEIGHT = 10      # Risk measure (resilience-aware)
 INV_RECOVERY_BONUS = 20          # Original recovery pattern (up from 15)
-INV_POST_SHOCK_BONUS = 60        # Post-shock recovery pattern (v1.2: broad cases)
+INV_POST_SHOCK_BONUS = 30        # Post-shock recovery pattern (v1.4.2: conservative for long-term)
 INV_CAPITULATION_BONUS = 60      # Proven winner capitulation (v1.3: CAUTIOUS for investors)
-INV_CHEAP_WINNER_BONUS = 15      # Cheap on a winner pattern (v1.1)
+INV_CHEAP_WINNER_BONUS = 5       # Cheap on a winner pattern (v1.4.2: selective for quality)
 INV_RSI_OVERSOLD_BONUS = 10      # Extra bonus for oversold + uptrend (v1.1)
 
 INV_MAX_BASE_POINTS = 90
@@ -790,61 +791,83 @@ def calculate_investment_score(
             elif growth_rate > 0:
                 score += 5
             else:
-                score -= 15  # Penalize negative growth
+                score -= 40  # v1.4.2: Harsh penalty for negative growth (was -15)
 
     # ========================================================================
     # GROWTH QUALITY BONUSES (~200 points) - Innovation Characteristics
     # ========================================================================
 
-    # 1. Rally Magnitude: up to +50
+    # 1. Rally Magnitude: up to +25 (v1.4.2: reduced to favor value entries over peaks)
     # Measures explosive upside capability (IONQ +900%, NVDA +200% years)
     if closes:
         rally_magnitude = compute_rally_magnitude(closes, 90)
         if rally_magnitude is not None:
             if rally_magnitude >= 100:
-                score += 50
+                score += 25
             elif rally_magnitude >= 50:
-                score += 30
-            elif rally_magnitude >= 30:
                 score += 15
+            elif rally_magnitude >= 30:
+                score += 10
 
-    # 2. Return to Highs Frequency: up to +40
+    # 2. Return to Highs Frequency: up to +20 (v1.4.2: reduced to avoid peak-buying)
     # Measures "winners stay winning" - quality stocks return to highs
+    # v1.4.2: Only reward if not in decline (blocks false positives from volatile downtrends)
     if closes:
         return_to_highs = compute_return_to_highs_frequency(closes, 180)
-        if return_to_highs is not None:
+        trend_slope = compute_trend_slope(closes, 100)
+        if return_to_highs is not None and trend_slope is not None and trend_slope >= 0:
             if return_to_highs >= 50:
-                score += 40
-            elif return_to_highs >= 30:
                 score += 20
+            elif return_to_highs >= 30:
+                score += 10
 
-    # 3. Trend Slope (steepness): up to +30
+    # 3. Trend Slope (steepness): up to +15 (v1.4.2: reduced to avoid momentum chasing)
     # Steeper uptrends = higher growth rate
     if closes:
         trend_slope = compute_trend_slope(closes, 100)
         if trend_slope is not None:
             if trend_slope >= 100:
-                score += 30
+                score += 15
             elif trend_slope >= 50:
-                score += 20
-            elif trend_slope >= 20:
                 score += 10
+            elif trend_slope >= 20:
+                score += 5
+            # v1.4.2: Severe decline penalty - flags structural collapse
+            elif trend_slope < -30:
+                score -= 40  # NOT quality growth - investigate this
 
     # 4. Volatility + Resilience Combo: +25
     # High volatility is OK if stock recovers (innovation growth characteristic)
     if volatility_bias == VolatilityBias.WILD and resilience_count >= 3:
         score += 25
 
-    # 5. Winner's Premium: +40 (v1.4.1)
+    # 5. Winner's Premium: +20 (v1.4.2: reduced to avoid peak-buying)
     # Rewards consistent excellence - stocks that stay near highs AND are battle-tested
     # Differentiates "superstar" (MU: 85% near highs, 3 recoveries) from "momentum spike"
     if closes:
         return_to_highs = compute_return_to_highs_frequency(closes, 180)
         if return_to_highs is not None and return_to_highs >= 80 and resilience_count >= 3:
-            score += 40
+            score += 20
+
+    # 6. Value Entry Bonus: Reward quality pullbacks (v1.4.2)
+    # Contrarian indicator - reward dips, penalize peaks
+    # Best entries are 10-20% below recent highs, not at all-time highs
+    if closes:
+        distance_from_high = compute_distance_from_high(closes, 20)
+        if distance_from_high is not None:
+            if -20 <= distance_from_high < -10:
+                # Sweet spot: 10-20% pullback on quality stock
+                score += 30
+            elif -10 <= distance_from_high < -5:
+                # Mild pullback: 5-10% off highs
+                score += 15
+            elif distance_from_high > -2:
+                # At or near peak (within 2% of 20-day high)
+                score -= 40  # Peak risk penalty (v1.4.2: increased to avoid peak-buying)
 
     # ========================================================================
     # PATTERN BONUSES (~135 points) - Opportunity Detection (keep v1.3 logic)
+    # v1.4.2: Block bonuses on severe declines (slope < -30%)
     # ========================================================================
 
     capitulation_detected = detect_proven_winner_capitulation(
@@ -858,32 +881,36 @@ def calculate_investment_score(
         current_price, sma20, sma100, long_term_trend, rsi_value
     )
 
+    # v1.4.2: Check if slope indicates structural decline (not recovery opportunity)
+    trend_slope_for_patterns = compute_trend_slope(closes, 100) if closes else None
+    severe_decline = trend_slope_for_patterns is not None and trend_slope_for_patterns < -30
+
     # Calculate TURNAROUND score (uses capitulation bonus)
     turnaround_score = score
-    if capitulation_detected:
+    if capitulation_detected and not severe_decline:  # v1.4.2: Block on severe decline
         bonus = 60  # INV_CAPITULATION_BONUS
         if resilience_count >= 3:
             bonus = int(bonus * 1.2)
         turnaround_score += bonus
-    elif post_shock_detected:
-        bonus = 60  # INV_POST_SHOCK_BONUS
+    elif post_shock_detected and not severe_decline:  # v1.4.2: Block on severe decline
+        bonus = 30  # INV_POST_SHOCK_BONUS (v1.4.2: reduced for long-term selectivity)
         if resilience_count >= 3:
             bonus = int(bonus * 1.2)
         turnaround_score += bonus
 
-    if cheap_winner_detected:
-        turnaround_score += 15  # INV_CHEAP_WINNER_BONUS
+    if cheap_winner_detected and not severe_decline:  # v1.4.2: Block on severe decline
+        turnaround_score += 5  # INV_CHEAP_WINNER_BONUS (v1.4.2: reduced for selectivity)
 
     # Calculate BAU score (post-shock only, not capitulation)
     bau_score = score
-    if post_shock_detected:
-        bonus = 60
+    if post_shock_detected and not severe_decline:  # v1.4.2: Block on severe decline
+        bonus = 30  # INV_POST_SHOCK_BONUS (v1.4.2: reduced for long-term selectivity)
         if resilience_count >= 3:
             bonus = int(bonus * 1.2)
         bau_score += bonus
 
-    if cheap_winner_detected:
-        bau_score += 15
+    if cheap_winner_detected and not severe_decline:  # v1.4.2: Block on severe decline
+        bau_score += 5  # INV_CHEAP_WINNER_BONUS (v1.4.2: reduced for selectivity)
 
     # Turnaround active if capitulation detected AND price < SMA(50)
     turnaround_active = capitulation_detected and (sma50 is not None and current_price < sma50)
@@ -891,6 +918,13 @@ def calculate_investment_score(
     # Normalize to 0-100 scale (v1.4.1 max points: ~465 with Winner's Premium)
     turnaround_normalized = normalize_score(turnaround_score, max_points=465)
     bau_normalized = normalize_score(bau_score, max_points=465)
+
+    # v1.4.2: INVERT Investment Score
+    # Testing shows low scores predict best long-term entries (quality dips)
+    # High scores predict worst entries (peaks, momentum chasing)
+    # Inversion: 100 - score flips the scale
+    turnaround_normalized = 100 - turnaround_normalized
+    bau_normalized = 100 - bau_normalized
 
     return ScoreResult(
         turnaround_raw=turnaround_score,
@@ -926,11 +960,11 @@ def get_rating_label(score: int) -> str:
     """
     Convert numeric score to categorical rating.
 
-    Score ranges (v1.4.1):
-    - 80-100: STRONG BUY (lowered from 85 to reflect quality superstars like MU)
+    Score ranges (v1.4.2):
+    - 80-100: STRONG BUY
     - 70-79: BUY
-    - 55-69: OUTPERFORM
-    - 45-54: HOLD
+    - 60-69: OUTPERFORM (raised from 55 for selectivity)
+    - 45-59: HOLD (expanded range for quality entries)
     - 30-44: UNDERPERFORM
     - 0-29: SELL
 
@@ -944,7 +978,7 @@ def get_rating_label(score: int) -> str:
         return "STRONG BUY"
     elif score >= 70:
         return "BUY"
-    elif score >= 55:
+    elif score >= 60:
         return "OUTPERFORM"
     elif score >= 45:
         return "HOLD"
