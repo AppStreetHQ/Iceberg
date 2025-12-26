@@ -303,6 +303,7 @@ def calculate_investment_score(
 
     # 1-year growth rate (exceptional indicator of quality)
     # Scaled down by ~40% with more granular tiers
+    # Growth is the primary objective of investing - penalize very low growth
     if growth_rate is not None:
         if growth_rate > 100:
             score += 18  # Exceptional growth (MU, RKLB)
@@ -314,8 +315,10 @@ def calculate_investment_score(
             score += 9   # Good growth
         elif growth_rate > 10:
             score += 6   # Moderate growth (MSFT)
+        elif growth_rate > 5:
+            score += 0   # Minimal growth - neutral (AAPL)
         elif growth_rate > 0:
-            score += 3   # Positive growth
+            score -= 5   # Very low growth - barely keeping up with inflation (AMZN)
 
     # Trend slope - long-term trajectory steepness
     if trend_slope is not None:
@@ -436,9 +439,8 @@ def get_rating_label(score: int, is_trade_score: bool = False) -> str:
     - 0-29: SELL
 
     Investment Score ranges (selective - quality long-term):
-    - 80-100: STRONG BUY
-    - 70-79: BUY
-    - 60-69: OUTPERFORM
+    - 85-100: STRONG BUY (only exceptional)
+    - 60-84: BUY (good stocks worth buying)
     - 45-59: HOLD
     - 30-44: UNDERPERFORM
     - 0-29: SELL
@@ -465,13 +467,11 @@ def get_rating_label(score: int, is_trade_score: bool = False) -> str:
         else:
             return "SELL"
     else:
-        # Investment Score: Higher thresholds for selectivity
-        if score >= 80:
+        # Investment Score: Higher thresholds for selectivity (only exceptional = STRONG BUY)
+        if score >= 85:
             return "STRONG BUY"
-        elif score >= 70:
-            return "BUY"
         elif score >= 60:
-            return "OUTPERFORM"
+            return "BUY"
         elif score >= 45:
             return "HOLD"
         elif score >= 30:
