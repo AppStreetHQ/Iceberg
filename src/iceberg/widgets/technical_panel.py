@@ -31,11 +31,11 @@ from ..analysis.scoring import (
 class TechnicalPanel(Widget):
     """Technical analysis indicators display"""
 
-    def __init__(self, db: Database, **kwargs) -> None:
+    def __init__(self, db: Database, initial_day_range: int = 120, **kwargs) -> None:
         super().__init__(**kwargs)
         self.db = db
         self.current_ticker: Optional[str] = None
-        self.current_range: int = 30
+        self.current_range: int = initial_day_range  # Set from app
         self.last_analysis_text: Optional[str] = None
 
     def compose(self) -> ComposeResult:

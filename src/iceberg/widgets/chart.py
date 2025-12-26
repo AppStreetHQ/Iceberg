@@ -15,12 +15,12 @@ from ..utils.formatting import COLOR_GAIN, COLOR_LOSS
 class ChartPanel(Widget):
     """Chart display with absolute/relative modes"""
 
-    def __init__(self, db: Database, height: int = 15, **kwargs) -> None:
+    def __init__(self, db: Database, height: int = 15, initial_day_range: int = 120, **kwargs) -> None:
         super().__init__(**kwargs)
         self.db = db
         self.chart_height = height
         self.current_ticker: Optional[str] = None
-        self.current_range: int = 120  # Default to 120-day view
+        self.current_range: int = initial_day_range  # Set from app
         self.chart_mode: str = "absolute"  # "absolute" or "relative"
 
     def compose(self) -> ComposeResult:

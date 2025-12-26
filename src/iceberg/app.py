@@ -60,10 +60,10 @@ class IcebergApp(App):
         with Horizontal(id="content"):
             with Vertical(id="left_panel"):
                 yield TickerBanner(self.db, id="ticker_banner")
-                yield Watchlist(self.db, self.config.watchlist_csv, id="watchlist")
+                yield Watchlist(self.db, self.config.watchlist_csv, self.day_range, id="watchlist")
             with Vertical(id="main_display"):
-                yield ChartPanel(self.db, self.config.chart_height, id="chart")
-                yield TechnicalPanel(self.db, id="technical")
+                yield ChartPanel(self.db, self.config.chart_height, self.day_range, id="chart")
+                yield TechnicalPanel(self.db, self.day_range, id="technical")
 
         yield StatusBar(finnhub_client=self.finnhub, id="status_bar")
 

@@ -33,14 +33,14 @@ class Watchlist(Widget):
             self.ticker = ticker
             super().__init__()
 
-    def __init__(self, db: Database, csv_path: Path, **kwargs) -> None:
+    def __init__(self, db: Database, csv_path: Path, initial_day_range: int = 120, **kwargs) -> None:
         super().__init__(**kwargs)
         self.db = db
         self.csv_path = csv_path
         self.items: list[WatchlistItem] = []
         self.sort_mode: str = "change"  # "alpha" or "change" - default to performance
         self.change_mode: str = "day"  # "day" or "range"
-        self.day_range: int = 90  # Current day range for range-based calculations
+        self.day_range: int = initial_day_range  # Set from app
 
     def compose(self) -> ComposeResult:
         """Compose watchlist"""
