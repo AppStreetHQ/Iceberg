@@ -20,7 +20,7 @@ class ChartPanel(Widget):
         self.db = db
         self.chart_height = height
         self.current_ticker: Optional[str] = None
-        self.current_range: int = 30
+        self.current_range: int = 120  # Default to 120-day view
         self.chart_mode: str = "absolute"  # "absolute" or "relative"
 
     def compose(self) -> ComposeResult:

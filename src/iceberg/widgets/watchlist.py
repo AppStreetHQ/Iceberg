@@ -38,7 +38,7 @@ class Watchlist(Widget):
         self.db = db
         self.csv_path = csv_path
         self.items: list[WatchlistItem] = []
-        self.sort_mode: str = "alpha"  # "alpha" or "change"
+        self.sort_mode: str = "change"  # "alpha" or "change" - default to performance
         self.change_mode: str = "day"  # "day" or "range"
         self.day_range: int = 90  # Current day range for range-based calculations
 
