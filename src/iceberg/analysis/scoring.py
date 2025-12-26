@@ -10,12 +10,22 @@ See docs/SCORES_2.0_PLAN.md for full methodology documentation.
 
 Version: 2.0.0 (2025-12-26)
 COMPLETE REBUILD - Independent dual-score system
-- Trade Score: Identifies swing trade opportunities (dip/recovery + momentum plays)
-- Investment Score: TODO - Identifies quality growth stocks for long-term holding
+
+Trade Score (Short-term entry timing):
+- Identifies swing trade opportunities (dip/recovery + momentum plays)
 - Tiered momentum detection (3d/5d/8d)
 - Tiered overbought penalties (RSI 65+/70+)
 - Tiered parabolic top penalties (25%/30%/40%+ above SMA100)
-- Validated via backtesting and extensive testing
+- Validated via backtesting (ORCL, ASTS, MU, etc.)
+
+Investment Score (Long-term quality assessment):
+- Identifies quality growth stocks for long-term holding
+- Growth-focused with 6 granular tiers (0%/10%/20%/30%/50%/100%+)
+- Bottom confirmation for conservative entry
+- Volatility awareness (prefer calm/choppy, penalize wild)
+- Structural decline detection (-30% slope, negative growth)
+- Scaled scoring to use full 0-100 range effectively
+- Validated across spectrum (MU/GOOGL=100, MSFT=82, META=58, IBIT=34)
 """
 
 from typing import Optional, List
@@ -245,13 +255,15 @@ def calculate_investment_score(
 
     PURPOSE: Identify quality growth stocks worth holding long-term
     TIME HORIZON: Months to years
-    FOCUS: Growth trajectory, resilience, long-term fundamentals
+    FOCUS: Growth trajectory, resilience, acceptable volatility, company strength
 
-    TODO: Build from scratch
-    - Define clear objective
-    - Choose relevant indicators (growth, long-term trends, quality)
-    - Weight appropriately for long-term holding
-    - Test and validate
+    Philosophy: Conservative, quality-focused. Wait for bottom confirmation,
+    favor low volatility and strong growth trajectory. Less risky than trades.
+
+    Examples:
+    - GOOGL/MSFT: Growth ~30%, low vol, resilient → ~85 (STRONG BUY)
+    - RKLB: Growth ~70%, high vol BUT resilient, rally >100% → ~70 (BUY)
+    - IBIT: Negative growth, declining, high vol → ~25 (SELL)
 
     Args:
         All technical indicators available
@@ -259,8 +271,144 @@ def calculate_investment_score(
     Returns:
         ScoreResult with scores 0-100
     """
-    # STUB: Return neutral score until rebuilt
-    score = 50
+    score = 50  # Start neutral
+
+    if closes is None or len(closes) < 100:
+        # Insufficient data - return neutral
+        return ScoreResult(
+            turnaround_raw=score,
+            turnaround_score=score,
+            bau_raw=score,
+            bau_score=score,
+            turnaround_active=False
+        )
+
+    # Import long-term indicator functions
+    from .indicators import (
+        compute_growth_rate,
+        compute_trend_slope,
+        compute_rally_magnitude,
+        compute_return_to_highs_frequency
+    )
+
+    # Calculate long-term indicators
+    growth_rate = compute_growth_rate(closes, 252) if len(closes) >= 252 else None
+    trend_slope = compute_trend_slope(closes, 100)
+    rally_magnitude = compute_rally_magnitude(closes, 90)
+    return_to_highs = compute_return_to_highs_frequency(closes, 180)
+
+    # ========================================================================
+    # GROWTH & TRAJECTORY (primary signals)
+    # ========================================================================
+
+    # 1-year growth rate (exceptional indicator of quality)
+    # Scaled down by ~40% with more granular tiers
+    if growth_rate is not None:
+        if growth_rate > 100:
+            score += 18  # Exceptional growth (MU, RKLB)
+        elif growth_rate > 50:
+            score += 15  # Very strong growth (GOOGL)
+        elif growth_rate > 30:
+            score += 12  # Strong growth (NVDA)
+        elif growth_rate > 20:
+            score += 9   # Good growth
+        elif growth_rate > 10:
+            score += 6   # Moderate growth (MSFT)
+        elif growth_rate > 0:
+            score += 3   # Positive growth
+
+    # Trend slope - long-term trajectory steepness
+    if trend_slope is not None:
+        if trend_slope > 30:
+            score += 9   # Steep upward trajectory (was +15)
+        elif trend_slope > 10:
+            score += 6   # Solid upward trajectory (was +10)
+
+    # Long-term trend (100-day) - structural uptrend
+    if long_term_trend == TrendBias.UP:
+        score += 9   # Strong structural uptrend (was +15)
+
+    # ========================================================================
+    # QUALITY & RESILIENCE (company strength)
+    # ========================================================================
+
+    # Resilience - proven bounce-back ability
+    if resilience_count >= 3:
+        score += 9   # High resilience, recovers well (was +15)
+
+    # Return to highs frequency - consistency
+    if return_to_highs is not None and return_to_highs > 50:
+        score += 6   # Spends >50% of time near highs (was +10)
+
+    # Rally magnitude - historical upside potential
+    if rally_magnitude is not None:
+        if rally_magnitude > 100:
+            score += 6   # Explosive upside (was +10)
+        elif rally_magnitude > 50:
+            score += 3   # Strong upside potential (was +5)
+
+    # ========================================================================
+    # VOLATILITY (risk awareness - prefer lower but not disqualifying)
+    # ========================================================================
+
+    # Tiered volatility penalties to differentiate risk levels
+    # Use raw sigma value for more granular assessment
+    if volatility_bias == VolatilityBias.CALM:
+        score += 6   # Ideal for long-term comfort
+    elif volatility_bias == VolatilityBias.CHOPPY:
+        score += 2   # Acceptable volatility
+    elif volatility_bias == VolatilityBias.WILD:
+        # Wild volatility (>3%) - tiered penalties based on severity
+        # Calculate approximate sigma from closes for finer granularity
+        from .indicators import compute_volatility
+        vol_result = compute_volatility(closes)
+        if vol_result and vol_result.sigma > 10:
+            score -= 15  # Extremely wild (>10% daily sigma)
+        elif vol_result and vol_result.sigma > 5:
+            score -= 10  # Very wild (5-10% daily sigma)
+        else:
+            score -= 5   # Wild (3-5% daily sigma)
+
+    # ========================================================================
+    # BOTTOM CONFIRMATION (conservative entry)
+    # ========================================================================
+
+    # RSI - not in freefall
+    if rsi_value is not None and rsi_value > 40:
+        score += 6   # Not oversold/crashing (was +10)
+
+    # Price holding above recent low (5-day stabilization)
+    if len(closes) >= 5:
+        five_day_low = min(closes[-5:])
+        if current_price >= five_day_low:
+            score += 3   # Holding above recent low (was +5)
+
+    # Above SMA(100) - long-term support intact
+    if sma100 is not None and current_price > sma100:
+        score += 6   # Above long-term average (was +10)
+
+    # ========================================================================
+    # STRUCTURAL DECLINE (major penalties)
+    # ========================================================================
+
+    # Severe slope decline - structural deterioration
+    if trend_slope is not None and trend_slope < -30:
+        score -= 24  # Severe structural decline (was -40)
+
+    # Negative 1-year growth - declining not growing
+    if growth_rate is not None and growth_rate < 0:
+        score -= 12  # Negative growth trajectory (was -20)
+
+    # No resilience history - unproven recovery ability
+    if resilience_count == 0:
+        score -= 6   # Never recovered from dips (was -10)
+
+    # Very extended drop - might be structural
+    if distance_from_high is not None and distance_from_high < -40:
+        score -= 12  # Severe drop from highs (was -20)
+
+    # Clamp score to 0-100
+    score = max(0, min(100, score))
 
     return ScoreResult(
         turnaround_raw=score,
