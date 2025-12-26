@@ -248,22 +248,24 @@ class TechnicalPanel(Widget):
 
         # Display SMAs side by side
         if sma20:
-            display.append("SMA(20): ", style="white")
-            display.append(f"{sma20_emoji} ", style=sma20_color)
-            display.append(f"${sma20:.2f} ({sma20_diff_pct:+.2f}%), ", style=sma20_color)
+            arrow20 = "▲" if current_price > sma20 else "▼" if current_price < sma20 else "→"
+            display.append("SMA(20): ")
+            display.append(f"${sma20:.2f} ({arrow20} {sma20_diff_pct:+.2f}%)", style=sma20_color)
+            display.append(" Trend: ")
             display.append(trend20_direction, style=trend20_color)
         else:
-            display.append("SMA(20): N/A", style="white")
+            display.append("SMA(20): N/A")
 
-        display.append("  │  ", style="#333333")
+        display.append("  │  ")
 
         if sma_range:
-            display.append(f"SMA({self.current_range}): ", style="white")
-            display.append(f"{sma_range_emoji} ", style=sma_range_color)
-            display.append(f"${sma_range:.2f} ({sma_range_diff_pct:+.2f}%), ", style=sma_range_color)
+            arrow_range = "▲" if current_price > sma_range else "▼" if current_price < sma_range else "→"
+            display.append(f"SMA({self.current_range}): ")
+            display.append(f"${sma_range:.2f} ({arrow_range} {sma_range_diff_pct:+.2f}%)", style=sma_range_color)
+            display.append(" Trend: ")
             display.append(trend_range_direction, style=trend_range_color)
         else:
-            display.append(f"SMA({self.current_range}): N/A", style="white")
+            display.append(f"SMA({self.current_range}): N/A")
 
         display.append("\n")
 
