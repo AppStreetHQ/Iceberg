@@ -24,9 +24,6 @@ from .scoring import (
     calculate_trade_score,
     calculate_investment_score,
     get_rating_label,
-    detect_recovery_pattern,
-    detect_post_shock_recovery,
-    detect_cheap_on_winner,
 )
 
 
@@ -181,90 +178,6 @@ def diagnose_date(ticker: str, target_date: str):
     else:
         print("Trend Slope: N/A")
 
-    # Check pattern triggers
-    print(f"\n{'='*70}")
-    print("PATTERN DETECTION")
-    print(f"{'='*70}")
-
-    recovery_detected = detect_recovery_pattern(
-        current_price, sma10, sma50,
-        trend10.bias if trend10 else None,
-        trend50.bias if trend50 else None
-    )
-    print(f"Recovery Pattern (v1.0): {'✓ DETECTED' if recovery_detected else '✗ Not detected'}")
-    if recovery_detected:
-        print(f"  → Bonus: +20 (× {1.2 if resilience_count >= 3 else 0.8 if resilience_count == 0 else 1.0} resilience)")
-
-    post_shock = detect_post_shock_recovery(
-        current_price,
-        distance_from_high,
-        rsi.value if rsi else None,
-        macd.hist if macd else None,
-        long_term_trend,
-        closes=closes,
-        sma100=sma100
-    )
-    print(f"Post-Shock Recovery (v1.2): {'✓ DETECTED' if post_shock else '✗ Not detected'}")
-    if post_shock:
-        print(f"  → Bonus: +60 (× {1.2 if resilience_count >= 3 else 1.0} resilience)")
-    else:
-        # Show why it failed
-        if distance_from_high is not None and distance_from_high > -10:
-            print(f"  → Failed: Distance from high {distance_from_high:.1f}% (needs < -10%)")
-
-        # Check historical strength
-        if closes and sma100 and len(closes) >= 60:
-            lookback = closes[-60:]
-            had_strength = False
-            for i in range(len(lookback)):
-                window = closes[:-(60-i)] if i < 59 else closes
-                if len(window) >= 100:
-                    hist_sma100 = sum(window[-100:]) / 100
-                    if lookback[i] > hist_sma100:
-                        had_strength = True
-                        break
-            if not had_strength:
-                print(f"  → Failed: Price was never above SMA(100) in past 60 days (no historical strength)")
-
-        # Check early recovery signals
-        rsi_ok = rsi and rsi.value > 20
-        if closes and len(closes) >= 5:
-            recent_low = min(closes[-5:])
-            stabilizing = current_price >= recent_low * 0.98
-        else:
-            stabilizing = False
-
-        if not (rsi_ok or stabilizing):
-            print(f"  → Failed: No early recovery signals (RSI {rsi.value:.1f if rsi else 'N/A'} needs >20, or price needs to be stabilizing)")
-
-    # Import the capitulation detection function
-    from .scoring import detect_proven_winner_capitulation
-
-    capitulation = detect_proven_winner_capitulation(
-        current_price,
-        closes,
-        sma100,
-        rsi.value if rsi else None,
-        distance_from_high
-    )
-    print(f"Proven Winner Capitulation (v1.3): {'✓ DETECTED' if capitulation else '✗ Not detected'}")
-    if capitulation:
-        print(f"  → Trade Bonus: +205 (× {1.2 if resilience_count >= 3 else 1.0} resilience) - AGGRESSIVE for swing trades")
-        print(f"  → Investment Bonus: +60 (× {1.2 if resilience_count >= 3 else 1.0} resilience) - CAUTIOUS for positions")
-        if sma50:
-            print(f"  → Turnaround mode ACTIVE until price crosses ${sma50:.2f} (SMA 50)")
-
-    cheap_winner = detect_cheap_on_winner(
-        current_price,
-        sma20,
-        sma100,
-        long_term_trend,
-        rsi.value if rsi else None
-    )
-    print(f"Cheap on a Winner (v1.1): {'✓ DETECTED' if cheap_winner else '✗ Not detected'}")
-    if cheap_winner:
-        print(f"  → Bonus: +15")
-
     # Calculate scores
     print(f"\n{'='*70}")
     print("SCORING")
@@ -308,35 +221,12 @@ def diagnose_date(ticker: str, target_date: str):
         closes=closes
     )
 
-    # Display scores (with turnaround if active)
-    if trade_result.turnaround_active:
-        print(f"🔥 TURNAROUND MODE ACTIVE (price below SMA(50): ${sma50:.2f})")
-        print(f"\nTrade Score:")
-        trade_label = get_rating_label(trade_result.turnaround_score, is_trade_score=True)
-        print(f"  Turnaround: {trade_result.turnaround_score}/100 ({trade_label}) ⚡")
-        print(f"    Raw: {trade_result.turnaround_raw}")
-        trade_bau_label = get_rating_label(trade_result.bau_score, is_trade_score=True)
-        print(f"  BAU: {trade_result.bau_score}/100 ({trade_bau_label})")
-        print(f"    Raw: {trade_result.bau_raw}")
-    else:
-        trade_label = get_rating_label(trade_result.display_score, is_trade_score=True)
-        print(f"Trade Score: {trade_result.display_score}/100 ({trade_label})")
-        print(f"  Raw score: {trade_result.display_raw}")
+    # Display scores
+    trade_label = get_rating_label(trade_result.display_score, is_trade_score=True)
+    print(f"Trade Score: {trade_result.display_score}/100 ({trade_label})")
 
-    print()
-
-    if inv_result.turnaround_active:
-        print(f"Investment Score:")
-        inv_label = get_rating_label(inv_result.turnaround_score, is_trade_score=False)
-        print(f"  Turnaround: {inv_result.turnaround_score}/100 ({inv_label}) ⚡")
-        print(f"    Raw: {inv_result.turnaround_raw}")
-        inv_bau_label = get_rating_label(inv_result.bau_score, is_trade_score=False)
-        print(f"  BAU: {inv_result.bau_score}/100 ({inv_bau_label})")
-        print(f"    Raw: {inv_result.bau_raw}")
-    else:
-        inv_label = get_rating_label(inv_result.display_score, is_trade_score=False)
-        print(f"Investment Score: {inv_result.display_score}/100 ({inv_label})")
-        print(f"  Raw score: {inv_result.display_raw}")
+    inv_label = get_rating_label(inv_result.display_score, is_trade_score=False)
+    print(f"Investment Score: {inv_result.display_score}/100 ({inv_label})")
 
     print(f"\n{'='*70}\n")
 
