@@ -192,6 +192,17 @@ def calculate_trade_score(
         if trend_slope is not None and trend_slope < -30:
             score -= 15  # Severe structural decline
 
+    # Parabolic top - tiered penalties for extension above SMA(100)
+    # Catches dangerous "too far, too fast" setups
+    if sma100 is not None and current_price > sma100:
+        extension_pct = ((current_price - sma100) / sma100) * 100
+        if extension_pct >= 40:
+            score -= 30  # Extremely parabolic - very high risk
+        elif extension_pct >= 30:
+            score -= 20  # Severely extended - high risk
+        elif extension_pct >= 25:
+            score -= 10  # Getting extended - elevated risk
+
     # Clamp score to 0-100
     score = max(0, min(100, score))
 
