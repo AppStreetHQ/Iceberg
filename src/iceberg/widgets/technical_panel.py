@@ -164,13 +164,13 @@ class TechnicalPanel(Widget):
         inv_suffix = " ⚡" if inv_result.turnaround_active else ""
 
         display.append("Trade Score:      ", style="bold white")
-        display.append(f"{trade_score}/100 ", style=trade_color)
+        display.append(f"{trade_score:>3}/100 ", style=trade_color)
         display.append(trade_bar, style=trade_color)
         display.append(f"  {trade_label}{trade_suffix}", style=trade_color)
         display.append("\n")
 
         display.append("Investment Score: ", style="bold white")
-        display.append(f"{inv_score}/100 ", style=inv_color)
+        display.append(f"{inv_score:>3}/100 ", style=inv_color)
         display.append(inv_bar, style=inv_color)
         display.append(f"  {inv_label}{inv_suffix}", style=inv_color)
         display.append("\n")
