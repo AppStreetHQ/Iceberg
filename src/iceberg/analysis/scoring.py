@@ -336,24 +336,32 @@ def get_rating_color(score: int) -> str:
     """
     Get color for score/rating display.
 
+    Aligned with Trade Score rating thresholds:
+    - 75+: STRONG BUY (bright green)
+    - 65-74: BUY (green)
+    - 55-64: OUTPERFORM (yellow-green)
+    - 45-54: HOLD (gray)
+    - 30-44: UNDERPERFORM (orange)
+    - <30: SELL (red)
+
     Args:
         score: Normalized score (0-100)
 
     Returns:
         Color code string
     """
-    if score >= 80:
-        return "#00ff00"  # Bright green
-    elif score >= 70:
-        return "#88ff00"  # Green
-    elif score >= 60:
-        return "#ccff00"  # Yellow-green
+    if score >= 75:
+        return "#00ff00"  # Bright green - STRONG BUY
+    elif score >= 65:
+        return "#88ff00"  # Green - BUY
+    elif score >= 55:
+        return "#ccff00"  # Yellow-green - OUTPERFORM
     elif score >= 45:
-        return "#888888"  # Gray
+        return "#888888"  # Gray - HOLD
     elif score >= 30:
-        return "#ffaa00"  # Orange
+        return "#ffaa00"  # Orange - UNDERPERFORM
     else:
-        return "#ff0000"  # Red
+        return "#ff0000"  # Red - SELL/AVOID
 
 
 def generate_score_bar(score: int, width: int = 20) -> str:
