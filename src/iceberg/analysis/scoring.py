@@ -956,36 +956,61 @@ def normalize_score(raw_score: int, max_points: int) -> int:
     return int(round(normalized))
 
 
-def get_rating_label(score: int) -> str:
+def get_rating_label(score: int, is_trade_score: bool = False) -> str:
     """
     Convert numeric score to categorical rating.
 
-    Score ranges (v1.4.2):
+    Trade Score ranges (aggressive - identifies entry points):
+    - 75-100: STRONG BUY
+    - 65-74: BUY
+    - 55-64: OUTPERFORM
+    - 45-54: HOLD
+    - 30-44: UNDERPERFORM
+    - 0-29: SELL
+
+    Investment Score ranges (selective - quality long-term):
     - 80-100: STRONG BUY
     - 70-79: BUY
-    - 60-69: OUTPERFORM (raised from 55 for selectivity)
-    - 45-59: HOLD (expanded range for quality entries)
+    - 60-69: OUTPERFORM
+    - 45-59: HOLD
     - 30-44: UNDERPERFORM
     - 0-29: SELL
 
     Args:
         score: Normalized score (0-100)
+        is_trade_score: True for Trade Score (lower thresholds), False for Investment Score
 
     Returns:
         Rating label string
     """
-    if score >= 80:
-        return "STRONG BUY"
-    elif score >= 70:
-        return "BUY"
-    elif score >= 60:
-        return "OUTPERFORM"
-    elif score >= 45:
-        return "HOLD"
-    elif score >= 30:
-        return "UNDERPERFORM"
+    if is_trade_score:
+        # Trade Score: Lower thresholds for more aggressive entry signals
+        if score >= 75:
+            return "STRONG BUY"
+        elif score >= 65:
+            return "BUY"
+        elif score >= 55:
+            return "OUTPERFORM"
+        elif score >= 45:
+            return "HOLD"
+        elif score >= 30:
+            return "UNDERPERFORM"
+        else:
+            return "SELL"
     else:
-        return "SELL"
+        # Investment Score: Higher thresholds for selectivity
+        if score >= 80:
+            return "STRONG BUY"
+        elif score >= 70:
+            return "BUY"
+        elif score >= 60:
+            return "OUTPERFORM"
+        elif score >= 45:
+            return "HOLD"
+        elif score >= 30:
+            return "UNDERPERFORM"
+        else:
+            return "SELL"
 
 
 def get_rating_color(score: int) -> str:

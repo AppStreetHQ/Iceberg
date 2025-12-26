@@ -150,12 +150,12 @@ class TechnicalPanel(Widget):
 
         # Iceberg Scores - use display_score from ScoreResult
         trade_score = trade_result.display_score
-        trade_label = get_rating_label(trade_score)
+        trade_label = get_rating_label(trade_score, is_trade_score=True)
         trade_color = get_rating_color(trade_score)
         trade_bar = generate_score_bar(trade_score, width=20)
 
         inv_score = inv_result.display_score
-        inv_label = get_rating_label(inv_score)
+        inv_label = get_rating_label(inv_score, is_trade_score=False)
         inv_color = get_rating_color(inv_score)
         inv_bar = generate_score_bar(inv_score, width=20)
 

@@ -312,14 +312,14 @@ def diagnose_date(ticker: str, target_date: str):
     if trade_result.turnaround_active:
         print(f"🔥 TURNAROUND MODE ACTIVE (price below SMA(50): ${sma50:.2f})")
         print(f"\nTrade Score:")
-        trade_label = get_rating_label(trade_result.turnaround_score)
+        trade_label = get_rating_label(trade_result.turnaround_score, is_trade_score=True)
         print(f"  Turnaround: {trade_result.turnaround_score}/100 ({trade_label}) ⚡")
         print(f"    Raw: {trade_result.turnaround_raw}")
-        trade_bau_label = get_rating_label(trade_result.bau_score)
+        trade_bau_label = get_rating_label(trade_result.bau_score, is_trade_score=True)
         print(f"  BAU: {trade_result.bau_score}/100 ({trade_bau_label})")
         print(f"    Raw: {trade_result.bau_raw}")
     else:
-        trade_label = get_rating_label(trade_result.display_score)
+        trade_label = get_rating_label(trade_result.display_score, is_trade_score=True)
         print(f"Trade Score: {trade_result.display_score}/100 ({trade_label})")
         print(f"  Raw score: {trade_result.display_raw}")
 
@@ -327,14 +327,14 @@ def diagnose_date(ticker: str, target_date: str):
 
     if inv_result.turnaround_active:
         print(f"Investment Score:")
-        inv_label = get_rating_label(inv_result.turnaround_score)
+        inv_label = get_rating_label(inv_result.turnaround_score, is_trade_score=False)
         print(f"  Turnaround: {inv_result.turnaround_score}/100 ({inv_label}) ⚡")
         print(f"    Raw: {inv_result.turnaround_raw}")
-        inv_bau_label = get_rating_label(inv_result.bau_score)
+        inv_bau_label = get_rating_label(inv_result.bau_score, is_trade_score=False)
         print(f"  BAU: {inv_result.bau_score}/100 ({inv_bau_label})")
         print(f"    Raw: {inv_result.bau_raw}")
     else:
-        inv_label = get_rating_label(inv_result.display_score)
+        inv_label = get_rating_label(inv_result.display_score, is_trade_score=False)
         print(f"Investment Score: {inv_result.display_score}/100 ({inv_label})")
         print(f"  Raw score: {inv_result.display_raw}")
 

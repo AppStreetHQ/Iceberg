@@ -257,8 +257,8 @@ def backtest_ticker(
                     price=price,
                     trade_score=trade_score,
                     investment_score=inv_score,
-                    trade_rating=get_rating_label(trade_score),
-                    investment_rating=get_rating_label(inv_score),
+                    trade_rating=get_rating_label(trade_score, is_trade_score=True),
+                    investment_rating=get_rating_label(inv_score, is_trade_score=False),
                     return_2w=return_2w,
                     return_1m=return_1m,
                     return_3m=return_3m
