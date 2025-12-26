@@ -6,13 +6,16 @@ which provides two perspectives on stock signals:
 - Trade Score: Short-term entry timing (days/weeks)
 - Investment Score: Long-term quality assessment (months/years)
 
-See ICEBERG_INDEX.md for full methodology documentation.
+See docs/SCORES_2.0_PLAN.md for full methodology documentation.
 
-Version: 2.0.0-dev (2025-12-26)
-CLEAN REBUILD - Starting from scratch with independent scoring systems
-- Trade and Investment scores built independently with separate logic
-- Clear separation of concerns to avoid confusion
-- Backtest infrastructure preserved from v1.4.x
+Version: 2.0.0 (2025-12-26)
+COMPLETE REBUILD - Independent dual-score system
+- Trade Score: Identifies swing trade opportunities (dip/recovery + momentum plays)
+- Investment Score: TODO - Identifies quality growth stocks for long-term holding
+- Tiered momentum detection (3d/5d/8d)
+- Tiered overbought penalties (RSI 65+/70+)
+- Tiered parabolic top penalties (25%/30%/40%+ above SMA100)
+- Validated via backtesting and extensive testing
 """
 
 from typing import Optional, List
