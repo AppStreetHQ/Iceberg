@@ -292,33 +292,78 @@ def calculate_investment_score(
     )
 
     # Calculate long-term indicators
-    growth_rate = compute_growth_rate(closes, 252) if len(closes) >= 252 else None
     trend_slope = compute_trend_slope(closes, 100)
     rally_magnitude = compute_rally_magnitude(closes, 90)
     return_to_highs = compute_return_to_highs_frequency(closes, 180)
+
+    # Calculate growth rate with tiered bonuses based on period
+    growth_rate = None
+    growth_period = None
+    if len(closes) >= 252:
+        growth_rate = compute_growth_rate(closes, 252)
+        growth_period = 12  # months
+    elif len(closes) >= 189:
+        growth_rate = compute_growth_rate(closes, 189)
+        growth_period = 9  # months
+    elif len(closes) >= 126:
+        growth_rate = compute_growth_rate(closes, 126)
+        growth_period = 6  # months
 
     # ========================================================================
     # GROWTH & TRAJECTORY (primary signals)
     # ========================================================================
 
-    # 1-year growth rate (exceptional indicator of quality)
-    # Scaled down by ~40% with more granular tiers
+    # Growth rate with tiered bonuses (12mo > 9mo > 6mo)
     # Growth is the primary objective of investing - penalize very low growth
-    if growth_rate is not None:
-        if growth_rate > 100:
-            score += 18  # Exceptional growth (MU, RKLB)
-        elif growth_rate > 50:
-            score += 15  # Very strong growth (GOOGL)
-        elif growth_rate > 30:
-            score += 12  # Strong growth (NVDA)
-        elif growth_rate > 20:
-            score += 9   # Good growth
-        elif growth_rate > 10:
-            score += 6   # Moderate growth (MSFT)
-        elif growth_rate > 5:
-            score += 0   # Minimal growth - neutral (AAPL)
-        elif growth_rate > 0:
-            score -= 5   # Very low growth - barely keeping up with inflation (AMZN)
+    if growth_rate is not None and growth_period is not None:
+        if growth_period == 12:
+            # 12-month growth: Full bonuses
+            if growth_rate > 100:
+                score += 18  # Exceptional growth (MU, RKLB)
+            elif growth_rate > 50:
+                score += 15  # Very strong growth (GOOGL)
+            elif growth_rate > 30:
+                score += 12  # Strong growth (NVDA)
+            elif growth_rate > 20:
+                score += 9   # Good growth
+            elif growth_rate > 10:
+                score += 6   # Moderate growth (MSFT)
+            elif growth_rate > 5:
+                score += 0   # Minimal growth - neutral (AAPL)
+            elif growth_rate > 0:
+                score -= 5   # Very low growth (AMZN)
+        elif growth_period == 9:
+            # 9-month growth: Slightly reduced (~85% of 12-month)
+            if growth_rate > 100:
+                score += 15
+            elif growth_rate > 50:
+                score += 12
+            elif growth_rate > 30:
+                score += 10
+            elif growth_rate > 20:
+                score += 7
+            elif growth_rate > 10:
+                score += 5
+            elif growth_rate > 5:
+                score += 0
+            elif growth_rate > 0:
+                score -= 4
+        elif growth_period == 6:
+            # 6-month growth: Further reduced (~67% of 12-month)
+            if growth_rate > 100:
+                score += 12
+            elif growth_rate > 50:
+                score += 10
+            elif growth_rate > 30:
+                score += 8
+            elif growth_rate > 20:
+                score += 6
+            elif growth_rate > 10:
+                score += 4
+            elif growth_rate > 5:
+                score += 0
+            elif growth_rate > 0:
+                score -= 3
 
     # Trend slope - long-term trajectory steepness
     if trend_slope is not None:
