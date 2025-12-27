@@ -21,6 +21,9 @@ from .widgets.status_bar import StatusBar
 class IcebergApp(App):
     """Iceberg Terminal - Bloomberg-style stock market TUI"""
 
+    TITLE = "Iceberg Terminal"
+    SUB_TITLE = "v1.0"
+
     CSS_PATH = "app.tcss"
     SHOW_FOOTER = False  # Disable built-in footer, we have custom StatusBar
 
