@@ -177,12 +177,26 @@ StatusBar {
     background: black;
 }
 
-#status_content {
+#status_container {
     width: 100%;
+    height: 1;
+    background: black;
+}
+
+#status_left {
+    width: 1fr;
     content-align: left middle;
     padding: 0 1;
     background: black;
-    color: #888888;
+    color: white;
+}
+
+#status_right {
+    width: auto;
+    content-align: right middle;
+    padding: 0 1;
+    background: black;
+    color: white;
 }
 
 /* Color helpers */

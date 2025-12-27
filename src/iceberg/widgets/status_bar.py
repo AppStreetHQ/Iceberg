@@ -1,6 +1,7 @@
 """Status bar widget for bottom of screen"""
 
 from textual.app import ComposeResult
+from textual.containers import Horizontal
 from textual.widget import Widget
 from textual.widgets import Static
 from rich.text import Text
@@ -22,7 +23,9 @@ class StatusBar(Widget):
 
     def compose(self) -> ComposeResult:
         """Compose status bar content"""
-        yield Static("", id="status_content")
+        with Horizontal(id="status_container"):
+            yield Static("", id="status_left")
+            yield Static("", id="status_right")
 
     def on_mount(self) -> None:
         """Initialize status bar"""
@@ -63,27 +66,31 @@ class StatusBar(Widget):
         hints = "j/k:nav  c:chart  r:range  s:sort  d:day/range  e:copy  u:update  q:quit"
         market_info = f"Market: {self.market_status} {self.market_indicator}"
 
-        # Build status text with optional color
-        text = Text()
-        text.append(market_info, style="white")
-        text.append(" | ", style="white")
+        # Build left side text
+        left_text = Text()
+        left_text.append(market_info, style="white")
+        left_text.append(" | ", style="white")
 
         if message:
             if color:
-                text.append(message, style=color)
+                left_text.append(message, style=color)
             else:
-                text.append(message, style="white")
+                left_text.append(message, style="white")
         else:
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            text.append(f"Last update: {now}", style="white")
+            left_text.append(f"Last update: {now}", style="white")
 
-        text.append(" | ", style="white")
-        text.append(hints, style="dim")
-        text.append(" | ", style="white")
-        text.append("Iceberg v1.0", style="cyan")
+        left_text.append(" | ", style="white")
+        left_text.append(hints, style="white")
 
-        status_widget = self.query_one("#status_content", Static)
-        status_widget.update(text)
+        # Build right side text
+        right_text = Text()
+        right_text.append("Iceberg v1.0", style="white")
+
+        status_left = self.query_one("#status_left", Static)
+        status_right = self.query_one("#status_right", Static)
+        status_left.update(left_text)
+        status_right.update(right_text)
 
     def refresh_market_status(self) -> None:
         """Refresh market status and update display"""
