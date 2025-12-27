@@ -79,6 +79,8 @@ class StatusBar(Widget):
 
         text.append(" | ", style="white")
         text.append(hints, style="dim")
+        text.append(" | ", style="white")
+        text.append("Iceberg v1.0", style="cyan")
 
         status_widget = self.query_one("#status_content", Static)
         status_widget.update(text)
