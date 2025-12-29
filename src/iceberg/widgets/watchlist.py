@@ -98,9 +98,12 @@ class Watchlist(Widget):
             "change": "Change"
         }.get(self.sort_mode, "Unknown")
 
-        header_text = f"Watchlist | {change_text}\nSort: {sort_label}"
+        # Use Rich Text to make only first line bold
+        header = Text()
+        header.append(f"Watchlist | {change_text}", style="bold white")
+        header.append(f"\nSort: {sort_label}", style="white")
 
-        self.query_one("#watchlist_header", Static).update(header_text)
+        self.query_one("#watchlist_header", Static).update(header)
 
     def update_display(self) -> None:
         """Update the display with current data"""
