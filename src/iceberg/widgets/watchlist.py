@@ -184,7 +184,7 @@ class Watchlist(Widget):
             # Sort by Trade Score (descending), then alphabetically
             self.items.sort(
                 key=lambda x: (
-                    -(x.trade_score if x.trade_score is not None else -1),
+                    -(x.trade_score if x.trade_score is not None else -999),
                     x.ticker
                 )
             )
@@ -192,7 +192,7 @@ class Watchlist(Widget):
             # Sort by Investment Score (descending), then alphabetically
             self.items.sort(
                 key=lambda x: (
-                    -(x.investment_score if x.investment_score is not None else -1),
+                    -(x.investment_score if x.investment_score is not None else -999),
                     x.ticker
                 )
             )
