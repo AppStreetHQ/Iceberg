@@ -110,13 +110,6 @@ class Watchlist(Widget):
         """Update the display with current data"""
         self.update_header()
         option_list = self.query_one("#ticker_list", OptionList)
-
-        # Preserve current selection before clearing
-        if option_list.highlighted is not None and self.items:
-            idx = option_list.highlighted
-            if 0 <= idx < len(self.items):
-                self._preserved_ticker = self.items[idx].ticker
-
         option_list.clear_options()
 
         for item in self.items:
@@ -244,6 +237,9 @@ class Watchlist(Widget):
 
     def toggle_sort(self) -> str:
         """Cycle through sort modes: change → alpha → trade → investment → change"""
+        # Preserve selection before sorting
+        self._preserved_ticker = self.get_selected_ticker()
+
         if self.sort_mode == "change":
             self.sort_mode = "alpha"
         elif self.sort_mode == "alpha":
@@ -363,12 +359,17 @@ class Watchlist(Widget):
         self.day_range = day_range
         self.calculate_range_changes()
         if self.change_mode == "range":
+            # Preserve selection before re-sorting
+            self._preserved_ticker = self.get_selected_ticker()
             # Re-sort and update if we're in range mode
             self.sort_items()
             self.update_display()
 
     def toggle_change_mode(self) -> str:
         """Toggle between day and range change modes"""
+        # Preserve selection before sorting
+        self._preserved_ticker = self.get_selected_ticker()
+
         self.change_mode = "range" if self.change_mode == "day" else "day"
         # Re-sort and update display with new change mode
         self.sort_items()
