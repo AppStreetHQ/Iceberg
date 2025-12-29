@@ -42,6 +42,7 @@ class Watchlist(Widget):
         self.sort_mode: str = "change"  # "alpha" or "change" - default to performance
         self.change_mode: str = "day"  # "day" or "range"
         self.day_range: int = initial_day_range  # Set from app
+        self._preserved_ticker: Optional[str] = None  # Preserve selection across updates
 
     def compose(self) -> ComposeResult:
         """Compose watchlist"""
@@ -109,6 +110,13 @@ class Watchlist(Widget):
         """Update the display with current data"""
         self.update_header()
         option_list = self.query_one("#ticker_list", OptionList)
+
+        # Preserve current selection before clearing
+        if option_list.highlighted is not None and self.items:
+            idx = option_list.highlighted
+            if 0 <= idx < len(self.items):
+                self._preserved_ticker = self.items[idx].ticker
+
         option_list.clear_options()
 
         for item in self.items:
@@ -161,9 +169,20 @@ class Watchlist(Widget):
 
             option_list.add_option(Option(display, id=item.ticker))
 
-        # Select first item by default
+        # Restore preserved selection, or default to first item
         if self.items:
-            option_list.highlighted = 0
+            restored = False
+            if self._preserved_ticker:
+                # Find and restore the preserved ticker
+                for idx, item in enumerate(self.items):
+                    if item.ticker == self._preserved_ticker:
+                        option_list.highlighted = idx
+                        restored = True
+                        break
+
+            # Default to first item if no preserved selection
+            if not restored:
+                option_list.highlighted = 0
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Handle ticker selection"""
@@ -358,8 +377,8 @@ class Watchlist(Widget):
 
     def refresh_prices(self) -> None:
         """Refresh prices from database (after API update)"""
-        # Remember currently selected ticker before re-sorting
-        selected_ticker = self.get_selected_ticker()
+        # Preserve currently selected ticker (update_display will restore it)
+        self._preserved_ticker = self.get_selected_ticker()
 
         # Update prices for all items
         for item in self.items:
@@ -378,14 +397,6 @@ class Watchlist(Widget):
         # Recalculate Iceberg scores
         self.calculate_scores()
 
-        # Re-sort and update display
+        # Re-sort and update display (will restore selection automatically)
         self.sort_items()
         self.update_display()
-
-        # Restore selection to the same ticker (which may have moved)
-        if selected_ticker:
-            option_list = self.query_one("#ticker_list", OptionList)
-            for idx, item in enumerate(self.items):
-                if item.ticker == selected_ticker:
-                    option_list.highlighted = idx
-                    break

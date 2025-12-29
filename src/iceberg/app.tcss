@@ -48,7 +48,7 @@ MarketIndices {
 
 /* Left panel - ticker banner + watchlist */
 #left_panel {
-    width: 45;
+    width: 50;
     border-right: solid #333333;
     background: black;
 }
@@ -101,9 +101,6 @@ MarketIndices {
 #ticker_list {
     height: 1fr;
     background: black;
-}
-
-#ticker_list:focus {
     border: none;
 }
 
