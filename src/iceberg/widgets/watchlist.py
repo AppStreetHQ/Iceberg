@@ -140,8 +140,7 @@ class Watchlist(Widget):
                 else:
                     text.append("I", style="dim")
 
-                text.append(" ", style="white")
-                text.append(f"{price_str:>10} {arrow} {change_str:>8} ({change_pct_str:>7})", style=color)
+                text.append(f" {price_str:>10} {arrow} {change_str:>8} ({change_pct_str:>7})", style=color)
 
                 display = text
             else:
