@@ -98,7 +98,7 @@ class Watchlist(Widget):
             "change": "Change"
         }.get(self.sort_mode, "Unknown")
 
-        header_text = f"{change_text} | Sort: {sort_label}"
+        header_text = f"Watchlist | {change_text} | Sort: {sort_label}"
 
         self.query_one("#watchlist_header", Static).update(header_text)
 
