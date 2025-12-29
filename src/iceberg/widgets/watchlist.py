@@ -98,11 +98,10 @@ class Watchlist(Widget):
             "change": "Change"
         }.get(self.sort_mode, "Unknown")
 
-        # Use Rich Text - only "Watchlist" title is bold
+        # Use Rich Text with bold only for "Watchlist"
         header = Text()
-        header.append("Watchlist", style="bold white")
-        header.append(f" | {change_text}", style="white")
-        header.append(f"\nSort: {sort_label}", style="white")
+        header.append("Watchlist", style="bold")
+        header.append(f" | {change_text}\nSort: {sort_label}")
 
         self.query_one("#watchlist_header", Static).update(header)
 
