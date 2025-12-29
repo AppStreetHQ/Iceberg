@@ -46,6 +46,8 @@ class WatchlistItem:
     range_start_price: Optional[float] = None  # Price at start of selected range
     range_change: Optional[float] = None  # Dollar change over range
     range_change_pct: Optional[float] = None  # Percentage change over range
+    trade_score: Optional[int] = None  # Iceberg Trade Score (0-100)
+    investment_score: Optional[int] = None  # Iceberg Investment Score (0-100)
 
     @property
     def price_change(self) -> Optional[float]:

@@ -20,6 +20,7 @@ from ..utils.formatting import (
     COLOR_LOSS,
     COLOR_NEUTRAL,
 )
+from ..analysis.scoring import get_rating_color
 from pathlib import Path
 
 
@@ -75,6 +76,9 @@ class Watchlist(Widget):
         # Calculate range-based changes
         self.calculate_range_changes()
 
+        # Calculate Iceberg scores
+        self.calculate_scores()
+
         # Sort and populate option list
         self.sort_items()
         self.update_display()
@@ -122,11 +126,26 @@ class Watchlist(Widget):
                 # Build styled text
                 text = Text()
                 text.append(f"{item.ticker:<6} ", style="bold")
+
+                # Add colored T and I score indicators
+                if item.trade_score is not None:
+                    trade_color = get_rating_color(item.trade_score)
+                    text.append("T", style=trade_color)
+                else:
+                    text.append("T", style="dim")
+
+                if item.investment_score is not None:
+                    inv_color = get_rating_color(item.investment_score)
+                    text.append("I", style=inv_color)
+                else:
+                    text.append("I", style="dim")
+
+                text.append(" ", style="white")
                 text.append(f"{price_str:>10} {arrow} {change_str:>8} ({change_pct_str:>7})", style=color)
 
                 display = text
             else:
-                display = f"{item.ticker:<6} {price_str:>10}"
+                display = f"{item.ticker:<6} TI {price_str:>10}"
 
             option_list.add_option(Option(display, id=item.ticker))
 
@@ -204,6 +223,26 @@ class Watchlist(Widget):
                 item.range_change = None
                 item.range_change_pct = None
 
+    def calculate_scores(self) -> None:
+        """Calculate Iceberg scores for all watchlist items"""
+        from ..analysis.scoring import calculate_trade_score, calculate_investment_score
+
+        for item in self.items:
+            # Fetch closing prices for score calculation (365 days)
+            closes = self.db.get_closing_prices(item.ticker, 365)
+
+            if closes and len(closes) >= 20:
+                # Calculate both scores
+                trade_result = calculate_trade_score(closes)
+                inv_result = calculate_investment_score(closes)
+
+                item.trade_score = trade_result.display_score
+                item.investment_score = inv_result.display_score
+            else:
+                # Insufficient data
+                item.trade_score = None
+                item.investment_score = None
+
     def update_range(self, day_range: int) -> None:
         """Update day range and recalculate range-based changes"""
         self.day_range = day_range
@@ -239,6 +278,9 @@ class Watchlist(Widget):
 
         # Recalculate range-based changes
         self.calculate_range_changes()
+
+        # Recalculate Iceberg scores
+        self.calculate_scores()
 
         # Re-sort and update display
         self.sort_items()
