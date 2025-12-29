@@ -84,11 +84,21 @@ class Watchlist(Widget):
         self.update_display()
 
     def update_header(self) -> None:
-        """Update the header label based on change mode"""
+        """Update the header label based on change mode and sort mode"""
         if self.change_mode == "day":
-            header_text = "Last Change"
+            change_text = "Last Change"
         else:
-            header_text = f"{self.day_range}d Range Change"
+            change_text = f"{self.day_range}d Range Change"
+
+        # Add sort mode indicator
+        sort_label = {
+            "alpha": "Alpha",
+            "trade": "Trade Score",
+            "investment": "Investment Score",
+            "change": "Change"
+        }.get(self.sort_mode, "Unknown")
+
+        header_text = f"{change_text} | Sort: {sort_label}"
 
         self.query_one("#watchlist_header", Static).update(header_text)
 
@@ -211,14 +221,14 @@ class Watchlist(Widget):
                 )
 
     def toggle_sort(self) -> str:
-        """Cycle through sort modes: change → trade → investment → alpha → change"""
+        """Cycle through sort modes: change → alpha → trade → investment → change"""
         if self.sort_mode == "change":
+            self.sort_mode = "alpha"
+        elif self.sort_mode == "alpha":
             self.sort_mode = "trade"
         elif self.sort_mode == "trade":
             self.sort_mode = "investment"
-        elif self.sort_mode == "investment":
-            self.sort_mode = "alpha"
-        else:  # alpha
+        else:  # investment
             self.sort_mode = "change"
 
         self.sort_items()
