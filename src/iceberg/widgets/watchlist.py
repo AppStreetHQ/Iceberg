@@ -226,15 +226,75 @@ class Watchlist(Widget):
     def calculate_scores(self) -> None:
         """Calculate Iceberg scores for all watchlist items"""
         from ..analysis.scoring import calculate_trade_score, calculate_investment_score
+        from ..analysis.indicators import (
+            compute_macd,
+            compute_rsi,
+            compute_sma,
+            compute_trend,
+            compute_volatility,
+            compute_distance_from_high,
+            count_recovery_patterns,
+            compute_long_term_trend,
+        )
 
         for item in self.items:
             # Fetch closing prices for score calculation (365 days)
             closes = self.db.get_closing_prices(item.ticker, 365)
 
             if closes and len(closes) >= 20:
-                # Calculate both scores
-                trade_result = calculate_trade_score(closes)
-                inv_result = calculate_investment_score(closes)
+                # Calculate all indicators (same as technical panel)
+                current_price = closes[-1]
+                macd = compute_macd(closes)
+                rsi = compute_rsi(closes, 14)
+                sma10 = compute_sma(closes, 10)
+                sma20 = compute_sma(closes, 20)
+                sma50 = compute_sma(closes, 50)
+                sma100 = compute_sma(closes, 100)
+                trend10 = compute_trend(closes, 10)
+                trend50 = compute_trend(closes, 50)
+                long_term_trend = compute_long_term_trend(closes, 100)
+                volatility = compute_volatility(closes)
+                distance_from_high = compute_distance_from_high(closes, 20)
+                resilience_count = count_recovery_patterns(closes, 180)
+
+                # Calculate both scores with all indicators
+                trade_result = calculate_trade_score(
+                    current_price=current_price,
+                    macd_bias=macd.bias if macd else None,
+                    macd_hist=macd.hist if macd else None,
+                    rsi_value=rsi.value if rsi else None,
+                    rsi_bias=rsi.bias if rsi else None,
+                    sma10=sma10,
+                    sma20=sma20,
+                    sma50=sma50,
+                    sma100=sma100,
+                    trend10_bias=trend10.bias if trend10 else None,
+                    trend50_bias=trend50.bias if trend50 else None,
+                    long_term_trend=long_term_trend,
+                    volatility_bias=volatility.bias if volatility else None,
+                    distance_from_high=distance_from_high,
+                    resilience_count=resilience_count,
+                    closes=closes
+                )
+
+                inv_result = calculate_investment_score(
+                    current_price=current_price,
+                    macd_bias=macd.bias if macd else None,
+                    macd_hist=macd.hist if macd else None,
+                    rsi_value=rsi.value if rsi else None,
+                    rsi_bias=rsi.bias if rsi else None,
+                    sma10=sma10,
+                    sma20=sma20,
+                    sma50=sma50,
+                    sma100=sma100,
+                    trend10_bias=trend10.bias if trend10 else None,
+                    trend50_bias=trend50.bias if trend50 else None,
+                    long_term_trend=long_term_trend,
+                    volatility_bias=volatility.bias if volatility else None,
+                    distance_from_high=distance_from_high,
+                    resilience_count=resilience_count,
+                    closes=closes
+                )
 
                 item.trade_score = trade_result.display_score
                 item.investment_score = inv_result.display_score
