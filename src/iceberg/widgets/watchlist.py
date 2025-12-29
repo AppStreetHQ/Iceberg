@@ -180,6 +180,22 @@ class Watchlist(Widget):
         if self.sort_mode == "alpha":
             # Sort alphabetically by ticker
             self.items.sort(key=lambda x: x.ticker)
+        elif self.sort_mode == "trade":
+            # Sort by Trade Score (descending), then alphabetically
+            self.items.sort(
+                key=lambda x: (
+                    -(x.trade_score if x.trade_score is not None else -1),
+                    x.ticker
+                )
+            )
+        elif self.sort_mode == "investment":
+            # Sort by Investment Score (descending), then alphabetically
+            self.items.sort(
+                key=lambda x: (
+                    -(x.investment_score if x.investment_score is not None else -1),
+                    x.ticker
+                )
+            )
         elif self.sort_mode == "change":
             # Sort by price change % (descending, best performers first)
             # Use range or day change based on change_mode
@@ -195,8 +211,16 @@ class Watchlist(Widget):
                 )
 
     def toggle_sort(self) -> str:
-        """Toggle sort mode and re-sort"""
-        self.sort_mode = "change" if self.sort_mode == "alpha" else "alpha"
+        """Cycle through sort modes: change → trade → investment → alpha → change"""
+        if self.sort_mode == "change":
+            self.sort_mode = "trade"
+        elif self.sort_mode == "trade":
+            self.sort_mode = "investment"
+        elif self.sort_mode == "investment":
+            self.sort_mode = "alpha"
+        else:  # alpha
+            self.sort_mode = "change"
+
         self.sort_items()
         self.update_display()
         return self.sort_mode
