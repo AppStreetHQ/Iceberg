@@ -82,7 +82,6 @@ MarketIndices {
 #market_cap {
     color: white;
     background: black;
-    text-style: bold;
     padding: 1 0 0 0;
 }
 
