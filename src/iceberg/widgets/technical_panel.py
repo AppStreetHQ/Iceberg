@@ -17,6 +17,7 @@ from ..analysis.indicators import (
     compute_distance_from_high,
     count_recovery_patterns,
     compute_long_term_trend,
+    compute_beta,
 )
 from ..analysis.models import MACDBias, RSIBias, TrendBias, VolatilityBias
 from ..analysis.scoring import (
@@ -95,6 +96,10 @@ class TechnicalPanel(Widget):
         long_term_trend = compute_long_term_trend(closes, 100)
 
         volatility = compute_volatility(closes)
+
+        # Beta (12mo) - fetch SPY prices and calculate beta
+        spy_closes = self.db.get_closing_prices("SPY", data_days)
+        beta = compute_beta(closes, spy_closes) if spy_closes else None
 
         # v1.1 indicators
         distance_from_high = compute_distance_from_high(closes, 20)
@@ -284,6 +289,32 @@ class TechnicalPanel(Widget):
             display.append(f" (daily σ = {volatility.sigma:.2f}%)\n")
         else:
             display.append("Volatility:      N/A\n")
+
+        # Beta (12mo)
+        if beta is not None:
+            # Color code and interpretation
+            if beta < 0.8:
+                beta_color = "#00ff00"  # Green - low volatility
+                beta_label = "Less volatile than market"
+            elif beta < 1.2:
+                beta_color = "white"  # White - market volatility
+                beta_label = "Similar to market"
+            elif beta < 1.5:
+                beta_color = "#ffaa00"  # Orange - elevated volatility
+                beta_label = "More volatile than market"
+            else:
+                beta_color = "#ff0000"  # Red - high volatility
+                beta_label = "High volatility"
+
+            display.append("Beta (12mo):     ")
+            display.append(f"{beta:.2f}", style=beta_color)
+            display.append(" vs SPY - ")
+            display.append(beta_label, style=beta_color)
+            display.append("\n")
+        else:
+            display.append("Beta (12mo):     ")
+            display.append("Insufficient data", style="#888888")
+            display.append("\n")
 
         display.append("\n")  # Spacing
 

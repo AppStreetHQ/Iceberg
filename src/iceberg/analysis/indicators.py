@@ -461,3 +461,72 @@ def compute_trend_slope(closes: List[float], period: int = 100) -> Optional[floa
     annualized_slope_pct = (slope * 252 / avg_price) * 100
 
     return annualized_slope_pct
+
+
+def compute_beta(stock_closes: List[float], market_closes: List[float], min_periods: int = 240) -> Optional[float]:
+    """
+    Calculate beta (stock volatility relative to market) using 12 months of daily data
+
+    Beta = Covariance(stock returns, market returns) / Variance(market returns)
+
+    Args:
+        stock_closes: Stock closing prices (oldest to newest)
+        market_closes: Market (SPY) closing prices (oldest to newest)
+        min_periods: Minimum number of data points required (default 240 ≈ 12 months)
+
+    Returns:
+        Beta value or None if insufficient data
+    """
+    if len(stock_closes) < min_periods or len(market_closes) < min_periods:
+        return None
+
+    # Use the shorter length to ensure alignment
+    # (stocks may have different trading days than SPY)
+    common_length = min(len(stock_closes), len(market_closes))
+    if common_length < min_periods:
+        return None
+
+    # Truncate both to same length (use most recent data)
+    stock_closes = stock_closes[-common_length:]
+    market_closes = market_closes[-common_length:]
+
+    # Calculate daily returns for stock
+    stock_returns = []
+    for i in range(1, len(stock_closes)):
+        if stock_closes[i-1] != 0:
+            ret = (stock_closes[i] - stock_closes[i-1]) / stock_closes[i-1]
+            stock_returns.append(ret)
+        else:
+            return None  # Can't calculate with zero prices
+
+    # Calculate daily returns for market
+    market_returns = []
+    for i in range(1, len(market_closes)):
+        if market_closes[i-1] != 0:
+            ret = (market_closes[i] - market_closes[i-1]) / market_closes[i-1]
+            market_returns.append(ret)
+        else:
+            return None  # Can't calculate with zero prices
+
+    if len(stock_returns) < 2 or len(market_returns) < 2:
+        return None
+
+    # Calculate covariance and variance
+    try:
+        mean_stock = statistics.mean(stock_returns)
+        mean_market = statistics.mean(market_returns)
+
+        # Covariance(X, Y) = E[(X - mean_X)(Y - mean_Y)]
+        covariance = sum((s - mean_stock) * (m - mean_market)
+                        for s, m in zip(stock_returns, market_returns)) / len(stock_returns)
+
+        # Variance(Y) = E[(Y - mean_Y)^2]
+        variance = sum((m - mean_market) ** 2 for m in market_returns) / len(market_returns)
+
+        if variance == 0:
+            return None
+
+        beta = covariance / variance
+        return beta
+    except:
+        return None
