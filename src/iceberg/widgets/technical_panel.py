@@ -218,11 +218,8 @@ class TechnicalPanel(Widget):
 
         # MACD
         if macd:
-            emoji = "🐂" if macd.bias == MACDBias.BULL else "🐻" if macd.bias == MACDBias.BEAR else "➡️"
-            color = "#00ff00" if macd.bias == MACDBias.BULL else "#ff0000" if macd.bias == MACDBias.BEAR else "#888888"
-            spacing = " " if macd.bias != MACDBias.NEUTRAL else "  "  # Extra space for neutral emoji
+            color = "#00ff00" if macd.bias == MACDBias.BULL else "#ff0000" if macd.bias == MACDBias.BEAR else "bold white"
             display.append("MACD(12,26,9):   ")
-            display.append(f"{emoji}{spacing}", style=color)
             display.append(macd.bias.value.title(), style=color)
             display.append(f" (MACD {macd.macd:.2f}, Signal {macd.signal:.2f}, Hist {macd.hist:.2f})\n")
         else:
@@ -230,26 +227,17 @@ class TechnicalPanel(Widget):
 
         # RSI
         if rsi:
-            emoji_map = {
-                RSIBias.OVERBOUGHT: "🔴",
-                RSIBias.STRONG: "🟢",
-                RSIBias.NEUTRAL: "🟡",
-                RSIBias.WEAK: "🟠",
-                RSIBias.OVERSOLD: "🔵",
-            }
             color_map = {
                 RSIBias.OVERBOUGHT: "#ff0000",
                 RSIBias.STRONG: "#00ff00",
-                RSIBias.NEUTRAL: "#888888",
+                RSIBias.NEUTRAL: "bold white",
                 RSIBias.WEAK: "#ffaa00",
                 RSIBias.OVERSOLD: "#0088ff",
             }
-            emoji = emoji_map.get(rsi.bias, "⚪")
             color = color_map.get(rsi.bias, "#888888")
             display.append("RSI(14):         ")
-            display.append(f"{emoji} ", style=color)
             display.append(f"{rsi.value:.1f}", style=color)
-            display.append(f" - {rsi.bias.value.title()}\n")
+            display.append(f" - {rsi.bias.value.title()}\n", style=color)
         else:
             display.append("RSI(14):         N/A\n")
 
@@ -341,17 +329,17 @@ class TechnicalPanel(Widget):
                 VolatilityBias.WILD: "#ff0000",
             }
             color = color_map.get(volatility.bias, "#888888")
-            display.append("Volatility:          ")
+            display.append("Volatility:      ")
             display.append(volatility.bias.value.title(), style=color)
             display.append(f" (daily σ = {volatility.sigma:.2f}%)\n")
         else:
-            display.append("Volatility:          N/A\n")
+            display.append("Volatility:      N/A\n")
 
         # Beta (both QQQ and SPY on same line)
         beta_qqq_text, beta_qqq_color = format_beta(beta_qqq, "QQQ")
         beta_spy_text, beta_spy_color = format_beta(beta_spy, "SPY")
 
-        display.append("Beta (12mo):         ")
+        display.append("Beta (12mo):     ")
         display.append("QQQ: ", style="white")
         display.append(beta_qqq_text, style=beta_qqq_color)
         display.append("  │  ", style="#333333")
