@@ -173,6 +173,48 @@ class TechnicalPanel(Widget):
         # Title
         display.append(f"{self.current_ticker} - Technical Analysis", style="bold bright_white")
         display.append("\n\n")
+
+        # Current price and change (moved to top)
+        if len(closes) >= 2:
+            current = closes[-1]
+            yesterday = closes[-2]
+            change = current - yesterday
+            change_pct = (change / yesterday * 100) if yesterday != 0 else 0
+
+            if change > 0:
+                change_color = "#00ff00"
+                arrow = "▲"
+            elif change < 0:
+                change_color = "#ff0000"
+                arrow = "▼"
+            else:
+                change_color = "#888888"
+                arrow = "→"
+
+            display.append("Price:           ")
+            display.append(f"${current:.2f}  ", style="bold white")
+            display.append(f"{arrow} ${abs(change):.2f} ({change_pct:+.2f}%)", style=change_color)
+            display.append("\n")
+
+        # 52-week high/low (moved to top)
+        if len(closes) >= 240:
+            range_days = min(252, len(closes))
+            week52_high = max(closes[-range_days:])
+            week52_low = min(closes[-range_days:])
+            current = closes[-1]
+
+            dist_from_high = ((current - week52_high) / week52_high * 100) if week52_high != 0 else 0
+            dist_from_low = ((current - week52_low) / week52_low * 100) if week52_low != 0 else 0
+
+            high_color = "#ff0000" if dist_from_high < -10 else "#ffaa00" if dist_from_high < 0 else "#00ff00"
+            low_color = "#00ff00" if dist_from_low > 10 else "#ffaa00"
+
+            display.append("52-Week Range:   ")
+            display.append(f"High: ${week52_high:.2f} ({dist_from_high:+.1f}%)  ", style=high_color)
+            display.append(f"Low: ${week52_low:.2f} ({dist_from_low:+.1f}%)", style=low_color)
+            display.append("\n")
+
+        display.append("\n")
         display.append("Iceberg™ Score System v2.1", style="#00ffff")
         display.append("\n\n")
 
@@ -336,40 +378,17 @@ class TechnicalPanel(Widget):
         else:
             display.append("Volatility:          N/A\n")
 
-        # Beta vs QQQ (tech sector) - QQQ first
+        # Beta (both QQQ and SPY on same line)
         beta_qqq_text, beta_qqq_color = format_beta(beta_qqq, "QQQ")
-        display.append("Beta vs QQQ (12mo):  ")
-        display.append(beta_qqq_text, style=beta_qqq_color)
-        display.append("\n")
-
-        # Beta vs SPY (broad market) - SPY second
         beta_spy_text, beta_spy_color = format_beta(beta_spy, "SPY")
-        display.append("Beta vs SPY (12mo):  ")
+
+        display.append("Beta (12mo):         ")
+        display.append("QQQ: ", style="white")
+        display.append(beta_qqq_text, style=beta_qqq_color)
+        display.append("  │  ", style="#333333")
+        display.append("SPY: ", style="white")
         display.append(beta_spy_text, style=beta_spy_color)
         display.append("\n")
-
-        display.append("\n")  # Spacing
-
-        # Last price change
-        if len(closes) >= 2:
-            today = closes[-1]
-            yesterday = closes[-2]
-            change = today - yesterday
-            change_pct = (change / yesterday * 100) if yesterday != 0 else 0
-
-            if change > 0:
-                change_color = "#00ff00"
-                arrow = "▲"
-            elif change < 0:
-                change_color = "#ff0000"
-                arrow = "▼"
-            else:
-                change_color = "#888888"
-                arrow = "→"
-
-            display.append("Last Change:     ")
-            display.append(f"{arrow} ${abs(change):.2f} ({change_pct:+.2f}%)", style=change_color)
-            display.append("\n")
 
         # Store plain text for clipboard export
         self.last_analysis_text = display.plain
