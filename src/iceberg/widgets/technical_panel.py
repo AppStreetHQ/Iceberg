@@ -214,6 +214,8 @@ class TechnicalPanel(Widget):
             display.append(f"Low: ${week52_low:.2f} ({dist_from_low:+.1f}%)", style=low_color)
             display.append("\n")
 
+        display.append("\n")  # Blank line separator
+
         # MACD
         if macd:
             emoji = "🐂" if macd.bias == MACDBias.BULL else "🐻" if macd.bias == MACDBias.BEAR else "➡️"
