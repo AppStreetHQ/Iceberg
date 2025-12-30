@@ -214,40 +214,6 @@ class TechnicalPanel(Widget):
             display.append(f"Low: ${week52_low:.2f} ({dist_from_low:+.1f}%)", style=low_color)
             display.append("\n")
 
-        display.append("\n")
-        display.append("Iceberg™ Score System v2.1", style="#00ffff")
-        display.append("\n\n")
-
-        # Iceberg Scores - use display_score from ScoreResult
-        trade_score = trade_result.display_score
-        trade_label = get_rating_label(trade_score, is_trade_score=True)
-        trade_color = get_rating_color(trade_score)
-        trade_bar = generate_score_bar(trade_score, width=20)
-
-        inv_score = inv_result.display_score
-        inv_label = get_rating_label(inv_score, is_trade_score=False)
-        inv_color = get_rating_color(inv_score)
-        inv_bar = generate_score_bar(inv_score, width=20)
-
-        # Add turnaround indicator if active
-        trade_suffix = " ⚡" if trade_result.turnaround_active else ""
-        inv_suffix = " ⚡" if inv_result.turnaround_active else ""
-
-        display.append("Trade Score:      ", style="bold white")
-        display.append(f"{trade_score:>3}/100 ", style=trade_color)
-        display.append(trade_bar, style=trade_color)
-        display.append(f"  {trade_label}{trade_suffix}", style=trade_color)
-        display.append("\n")
-
-        display.append("Investment Score: ", style="bold white")
-        display.append(f"{inv_score:>3}/100 ", style=inv_color)
-        display.append(inv_bar, style=inv_color)
-        display.append(f"  {inv_label}{inv_suffix}", style=inv_color)
-        display.append("\n")
-
-        display.append("─" * 40, style="#333333")
-        display.append("\n\n")
-
         # MACD
         if macd:
             emoji = "🐂" if macd.bias == MACDBias.BULL else "🐻" if macd.bias == MACDBias.BEAR else "➡️"

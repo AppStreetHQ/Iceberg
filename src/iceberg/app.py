@@ -15,6 +15,7 @@ from .widgets.ticker_banner import TickerBanner
 from .widgets.watchlist import Watchlist
 from .widgets.chart import ChartPanel
 from .widgets.technical_panel import TechnicalPanel
+from .widgets.scores_panel import ScoresPanel
 from .widgets.status_bar import StatusBar
 
 
@@ -64,6 +65,7 @@ class IcebergApp(App):
             with Vertical(id="main_display"):
                 yield ChartPanel(self.db, self.config.chart_height, self.day_range, id="chart")
                 yield TechnicalPanel(self.db, self.day_range, id="technical")
+                yield ScoresPanel(self.db, self.day_range, id="scores")
 
         yield StatusBar(finnhub_client=self.finnhub, id="status_bar")
 
@@ -126,9 +128,11 @@ class IcebergApp(App):
 
         chart = self.query_one("#chart", ChartPanel)
         technical = self.query_one("#technical", TechnicalPanel)
+        scores = self.query_one("#scores", ScoresPanel)
 
         chart.update_ticker(self.selected_ticker, self.day_range)
         technical.update_ticker(self.selected_ticker, self.day_range)
+        scores.update_ticker(self.selected_ticker, self.day_range)
 
     def action_watchlist_down(self) -> None:
         """Move down in watchlist"""
@@ -171,11 +175,13 @@ class IcebergApp(App):
         banner = self.query_one(MarketIndices)
         chart = self.query_one("#chart", ChartPanel)
         technical = self.query_one("#technical", TechnicalPanel)
+        scores = self.query_one("#scores", ScoresPanel)
         watchlist = self.query_one("#watchlist", Watchlist)
 
         banner.update_range(self.day_range, self.selected_ticker)
         chart.update_range(self.day_range)
         technical.update_range(self.day_range)
+        scores.update_range(self.day_range)
         watchlist.update_range(self.day_range)
 
     def action_toggle_sort(self) -> None:
