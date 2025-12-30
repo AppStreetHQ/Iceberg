@@ -97,26 +97,32 @@ class TechnicalPanel(Widget):
 
         volatility = compute_volatility(closes)
 
-        # Beta (12mo) - fetch SPY prices and align by date
+        # Beta (12mo) - calculate vs both SPY (market) and QQQ (tech)
         stock_daily = self.db.get_daily_prices(self.current_ticker, data_days)
         spy_daily = self.db.get_daily_prices("SPY", data_days)
+        qqq_daily = self.db.get_daily_prices("QQQ", data_days)
 
-        # Align stock and SPY by common dates
+        # Beta vs SPY (broad market)
         if stock_daily and spy_daily:
-            # Create date-to-price maps
             stock_map = {dp.trade_date: dp.close for dp in stock_daily}
             spy_map = {dp.trade_date: dp.close for dp in spy_daily}
-
-            # Find common dates
-            common_dates = sorted(set(stock_map.keys()) & set(spy_map.keys()))
-
-            # Extract aligned closing prices
-            aligned_stock_closes = [stock_map[d] for d in common_dates]
-            aligned_spy_closes = [spy_map[d] for d in common_dates]
-
-            beta = compute_beta(aligned_stock_closes, aligned_spy_closes)
+            common_dates_spy = sorted(set(stock_map.keys()) & set(spy_map.keys()))
+            aligned_stock_closes_spy = [stock_map[d] for d in common_dates_spy]
+            aligned_spy_closes = [spy_map[d] for d in common_dates_spy]
+            beta_spy = compute_beta(aligned_stock_closes_spy, aligned_spy_closes)
         else:
-            beta = None
+            beta_spy = None
+
+        # Beta vs QQQ (tech sector)
+        if stock_daily and qqq_daily:
+            stock_map = {dp.trade_date: dp.close for dp in stock_daily}
+            qqq_map = {dp.trade_date: dp.close for dp in qqq_daily}
+            common_dates_qqq = sorted(set(stock_map.keys()) & set(qqq_map.keys()))
+            aligned_stock_closes_qqq = [stock_map[d] for d in common_dates_qqq]
+            aligned_qqq_closes = [qqq_map[d] for d in common_dates_qqq]
+            beta_qqq = compute_beta(aligned_stock_closes_qqq, aligned_qqq_closes)
+        else:
+            beta_qqq = None
 
         # v1.1 indicators
         distance_from_high = compute_distance_from_high(closes, 20)
@@ -293,7 +299,30 @@ class TechnicalPanel(Widget):
 
         display.append("\n")  # Spacing
 
-        # Volatility
+        # Helper function for beta interpretation
+        def format_beta(beta_value, benchmark):
+            if beta_value is None:
+                return ("Insufficient data", "#888888")
+
+            if beta_value < 0:
+                color = "#00ffff"  # Cyan
+                label = "Moves opposite"
+            elif beta_value < 0.8:
+                color = "#00ff00"  # Green
+                label = "Less volatile"
+            elif beta_value < 1.2:
+                color = "white"
+                label = "Similar"
+            elif beta_value < 1.5:
+                color = "#ffaa00"  # Orange
+                label = "More volatile"
+            else:
+                color = "#ff0000"  # Red
+                label = "High volatility"
+
+            return (f"{beta_value:.2f} - {label}", color)
+
+        # Volatility metrics (aligned)
         if volatility:
             color_map = {
                 VolatilityBias.CALM: "#00ff00",
@@ -301,40 +330,23 @@ class TechnicalPanel(Widget):
                 VolatilityBias.WILD: "#ff0000",
             }
             color = color_map.get(volatility.bias, "#888888")
-            display.append("Volatility:      ")
+            display.append("Volatility:          ")
             display.append(volatility.bias.value.title(), style=color)
             display.append(f" (daily σ = {volatility.sigma:.2f}%)\n")
         else:
-            display.append("Volatility:      N/A\n")
+            display.append("Volatility:          N/A\n")
 
-        # Beta (12mo)
-        if beta is not None:
-            # Color code and interpretation
-            if beta < 0:
-                beta_color = "#00ffff"  # Cyan - negative correlation
-                beta_label = "Moves opposite to market"
-            elif beta < 0.8:
-                beta_color = "#00ff00"  # Green - low correlation
-                beta_label = "Less volatile than market"
-            elif beta < 1.2:
-                beta_color = "white"  # White - market correlation
-                beta_label = "Similar to market"
-            elif beta < 1.5:
-                beta_color = "#ffaa00"  # Orange - elevated correlation
-                beta_label = "More volatile than market"
-            else:
-                beta_color = "#ff0000"  # Red - high correlation
-                beta_label = "High volatility"
+        # Beta vs QQQ (tech sector) - QQQ first
+        beta_qqq_text, beta_qqq_color = format_beta(beta_qqq, "QQQ")
+        display.append("Beta vs QQQ (12mo):  ")
+        display.append(beta_qqq_text, style=beta_qqq_color)
+        display.append("\n")
 
-            display.append("Beta (12mo):     ")
-            display.append(f"{beta:.2f}", style=beta_color)
-            display.append(" vs SPY - ")
-            display.append(beta_label, style=beta_color)
-            display.append("\n")
-        else:
-            display.append("Beta (12mo):     ")
-            display.append("Insufficient data", style="#888888")
-            display.append("\n")
+        # Beta vs SPY (broad market) - SPY second
+        beta_spy_text, beta_spy_color = format_beta(beta_spy, "SPY")
+        display.append("Beta vs SPY (12mo):  ")
+        display.append(beta_spy_text, style=beta_spy_color)
+        display.append("\n")
 
         display.append("\n")  # Spacing
 
