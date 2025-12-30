@@ -97,9 +97,26 @@ class TechnicalPanel(Widget):
 
         volatility = compute_volatility(closes)
 
-        # Beta (12mo) - fetch SPY prices and calculate beta
-        spy_closes = self.db.get_closing_prices("SPY", data_days)
-        beta = compute_beta(closes, spy_closes) if spy_closes else None
+        # Beta (12mo) - fetch SPY prices and align by date
+        stock_daily = self.db.get_daily_prices(self.current_ticker, data_days)
+        spy_daily = self.db.get_daily_prices("SPY", data_days)
+
+        # Align stock and SPY by common dates
+        if stock_daily and spy_daily:
+            # Create date-to-price maps
+            stock_map = {dp.trade_date: dp.close for dp in stock_daily}
+            spy_map = {dp.trade_date: dp.close for dp in spy_daily}
+
+            # Find common dates
+            common_dates = sorted(set(stock_map.keys()) & set(spy_map.keys()))
+
+            # Extract aligned closing prices
+            aligned_stock_closes = [stock_map[d] for d in common_dates]
+            aligned_spy_closes = [spy_map[d] for d in common_dates]
+
+            beta = compute_beta(aligned_stock_closes, aligned_spy_closes)
+        else:
+            beta = None
 
         # v1.1 indicators
         distance_from_high = compute_distance_from_high(closes, 20)
@@ -293,17 +310,20 @@ class TechnicalPanel(Widget):
         # Beta (12mo)
         if beta is not None:
             # Color code and interpretation
-            if beta < 0.8:
-                beta_color = "#00ff00"  # Green - low volatility
+            if beta < 0:
+                beta_color = "#00ffff"  # Cyan - negative correlation
+                beta_label = "Moves opposite to market"
+            elif beta < 0.8:
+                beta_color = "#00ff00"  # Green - low correlation
                 beta_label = "Less volatile than market"
             elif beta < 1.2:
-                beta_color = "white"  # White - market volatility
+                beta_color = "white"  # White - market correlation
                 beta_label = "Similar to market"
             elif beta < 1.5:
-                beta_color = "#ffaa00"  # Orange - elevated volatility
+                beta_color = "#ffaa00"  # Orange - elevated correlation
                 beta_label = "More volatile than market"
             else:
-                beta_color = "#ff0000"  # Red - high volatility
+                beta_color = "#ff0000"  # Red - high correlation
                 beta_label = "High volatility"
 
             display.append("Beta (12mo):     ")
