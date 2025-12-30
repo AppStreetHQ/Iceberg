@@ -3,7 +3,7 @@
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Static
-from textual.containers import Vertical
+from textual.containers import VerticalScroll
 from typing import Optional
 import asciichartpy as acp
 from rich.text import Text
@@ -25,7 +25,7 @@ class ChartPanel(Widget):
 
     def compose(self) -> ComposeResult:
         """Compose chart display"""
-        with Vertical(id="chart_container"):
+        with VerticalScroll(id="chart_container"):
             yield Static("", id="chart_header")
             yield Static("Select a ticker to view chart", id="chart_display")
             yield Static("", id="chart_stats")

@@ -119,7 +119,7 @@ MarketIndices {
 }
 
 #chart {
-    height: 50%;
+    height: 55%;
     border-bottom: solid #333333;
     padding: 0 1;
     background: black;
@@ -158,7 +158,7 @@ MarketIndices {
 }
 
 #scores {
-    height: 20%;
+    height: 15%;
     padding: 1;
     background: black;
 }
