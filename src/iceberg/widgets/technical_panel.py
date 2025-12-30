@@ -220,8 +220,9 @@ class TechnicalPanel(Widget):
         if macd:
             emoji = "🐂" if macd.bias == MACDBias.BULL else "🐻" if macd.bias == MACDBias.BEAR else "➡️"
             color = "#00ff00" if macd.bias == MACDBias.BULL else "#ff0000" if macd.bias == MACDBias.BEAR else "#888888"
+            spacing = " " if macd.bias != MACDBias.NEUTRAL else "  "  # Extra space for neutral emoji
             display.append("MACD(12,26,9):   ")
-            display.append(f"{emoji} ", style=color)
+            display.append(f"{emoji}{spacing}", style=color)
             display.append(macd.bias.value.title(), style=color)
             display.append(f" (MACD {macd.macd:.2f}, Signal {macd.signal:.2f}, Hist {macd.hist:.2f})\n")
         else:
