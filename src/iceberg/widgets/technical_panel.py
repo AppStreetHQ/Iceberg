@@ -288,8 +288,6 @@ class TechnicalPanel(Widget):
         else:
             display.append("RSI(14):         N/A\n")
 
-        display.append("\n")  # Spacing
-
         # SMAs - side by side to save space
         current_price = closes[-1] if closes else 0
 
@@ -343,8 +341,6 @@ class TechnicalPanel(Widget):
 
         display.append("\n")
 
-        display.append("\n")  # Spacing
-
         # Helper function for beta interpretation
         def format_beta(beta_value, benchmark):
             if beta_value is None:
@@ -389,7 +385,7 @@ class TechnicalPanel(Widget):
         display.append("Beta (12mo):     ")
         display.append("QQQ: ", style="white")
         display.append(beta_qqq_text, style=beta_qqq_color)
-        display.append("  │  ", style="#333333")
+        display.append("  │  ", style="white")
         display.append("SPY: ", style="white")
         display.append(beta_spy_text, style=beta_spy_color)
         display.append("\n")
