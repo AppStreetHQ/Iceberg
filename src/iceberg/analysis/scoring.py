@@ -196,7 +196,7 @@ def calculate_trade_score(
 
     # Near resistance = caution (within 5% below resistance, likely rejection)
     if resistance and current_price >= resistance * 0.95 and current_price < resistance:
-        score -= 8  # Near ceiling - risky entry
+        score -= 12  # Near ceiling - risky entry
 
     # Room to run = better risk/reward (>10% upside to resistance)
     if support and resistance:
