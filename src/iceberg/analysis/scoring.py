@@ -8,14 +8,15 @@ which provides two perspectives on stock signals:
 
 See docs/SCORES_2.0_PLAN.md for full methodology documentation.
 
-Version: 2.0.0 (2025-12-26)
-COMPLETE REBUILD - Independent dual-score system
+Version: 2.2.0 (2025-12-31)
+Support/Resistance integration for Trade Score
 
 Trade Score (Short-term entry timing):
 - Identifies swing trade opportunities (dip/recovery + momentum plays)
 - Tiered momentum detection (3d/5d/8d)
 - Tiered overbought penalties (RSI 65+/70+)
 - Tiered parabolic top penalties (25%/30%/40%+ above SMA100)
+- Support/Resistance awareness (bounce opportunities, breakouts, rejections)
 - Validated via backtesting (ORCL, ASTS, MU, etc.)
 
 Investment Score (Long-term quality assessment):
