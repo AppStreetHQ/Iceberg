@@ -268,7 +268,7 @@ class TechnicalPanel(Widget):
             color = "#00ff00" if macd.bias == MACDBias.BULL else "#ff0000" if macd.bias == MACDBias.BEAR else "white"
             display.append("MACD(12,26,9):   ")
             display.append(macd.bias.value.title(), style=color)
-            display.append(f" (MACD {macd.macd:.2f}, Signal {macd.signal:.2f}, Hist {macd.hist:.2f})\n")
+            display.append(f" (MACD {macd.macd:.2f}, Signal {macd.signal:.2f}, Hist {macd.hist:.2f})\n", style="white")
         else:
             display.append("MACD(12,26,9):   N/A\n")
 
@@ -323,20 +323,20 @@ class TechnicalPanel(Widget):
         # Display SMAs side by side
         if sma20:
             arrow20 = "▲" if current_price > sma20 else "▼" if current_price < sma20 else "→"
-            display.append("SMA(20): ")
+            display.append("SMA(20):         ")
             display.append(f"${sma20:.2f} ({arrow20} {sma20_diff_pct:+.2f}%)", style=sma20_color)
-            display.append(" Trend: ")
+            display.append(" Trend: ", style="white")
             display.append(trend20_direction, style=trend20_color)
         else:
-            display.append("SMA(20): N/A")
+            display.append("SMA(20):         N/A")
 
-        display.append("  │  ")
+        display.append("  │  ", style="white")
 
         if sma_range:
             arrow_range = "▲" if current_price > sma_range else "▼" if current_price < sma_range else "→"
             display.append(f"SMA({self.current_range}): ")
             display.append(f"${sma_range:.2f} ({arrow_range} {sma_range_diff_pct:+.2f}%)", style=sma_range_color)
-            display.append(" Trend: ")
+            display.append(" Trend: ", style="white")
             display.append(trend_range_direction, style=trend_range_color)
         else:
             display.append(f"SMA({self.current_range}): N/A")
@@ -378,7 +378,7 @@ class TechnicalPanel(Widget):
             color = color_map.get(volatility.bias, "white")
             display.append("Volatility:      ")
             display.append(volatility.bias.value.title(), style=color)
-            display.append(f" (daily σ = {volatility.sigma:.2f}%)\n")
+            display.append(f" (daily σ = {volatility.sigma:.2f}%)\n", style="white")
         else:
             display.append("Volatility:      N/A\n")
 

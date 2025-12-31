@@ -102,13 +102,20 @@ class ChartPanel(Widget):
         )
 
         # Build stats (below chart)
+        # Color high, low, and last based on comparison to start
+        high_color = COLOR_GAIN if high_price >= start_price else COLOR_LOSS
+        low_color = COLOR_GAIN if low_price >= start_price else COLOR_LOSS
+        last_color = COLOR_GAIN if end_price >= start_price else COLOR_LOSS
+
         stats_text = Text()
         stats_text.append(f"{arrow} ", style=color)
-        stats_text.append(
-            f"Start: ${start_price:.2f} | High: ${high_price:.2f} | "
-            f"Low: ${low_price:.2f} | Last: ${end_price:.2f} | ",
-            style="white"
-        )
+        stats_text.append(f"Start: ${start_price:.2f} | ", style="white")
+        stats_text.append(f"High: ${high_price:.2f}", style=high_color)
+        stats_text.append(" | ", style="white")
+        stats_text.append(f"Low: ${low_price:.2f}", style=low_color)
+        stats_text.append(" | ", style="white")
+        stats_text.append(f"Last: ${end_price:.2f}", style=last_color)
+        stats_text.append(" | ", style="white")
         stats_text.append(f"Change: {change:+.2f} ({change_pct:+.2f}%)", style=color)
 
         # Update display
