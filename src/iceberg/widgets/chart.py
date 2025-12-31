@@ -67,7 +67,7 @@ class ChartPanel(Widget):
 
         closes = [p.close for p in prices]
 
-        # Calculate stats
+        # Calculate price stats
         start_price = closes[0]
         end_price = closes[-1]
         high_price = max(closes)

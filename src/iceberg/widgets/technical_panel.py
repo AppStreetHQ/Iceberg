@@ -39,6 +39,18 @@ class TechnicalPanel(Widget):
         self.current_range: int = initial_day_range  # Set from app
         self.last_analysis_text: Optional[str] = None
 
+    @staticmethod
+    def format_volume(volume: float) -> str:
+        """Format volume with K/M/B suffixes"""
+        if volume >= 1_000_000_000:
+            return f"{volume / 1_000_000_000:.1f}B"
+        elif volume >= 1_000_000:
+            return f"{volume / 1_000_000:.1f}M"
+        elif volume >= 1_000:
+            return f"{volume / 1_000:.1f}K"
+        else:
+            return f"{volume:.0f}"
+
     def compose(self) -> ComposeResult:
         """Compose technical panel"""
         with VerticalScroll(id="technical_container"):
@@ -66,16 +78,20 @@ class TechnicalPanel(Widget):
         if not self.current_ticker:
             return
 
-        # Fetch closing prices - always use 365 days for consistent indicator calculation
+        # Fetch price data - always use 365 days for consistent indicator calculation
         # MACD, RSI, SMAs should be calculated the same way regardless of selected range
         data_days = 365
-        closes = self.db.get_closing_prices(self.current_ticker, data_days)
+        daily_prices = self.db.get_daily_prices(self.current_ticker, data_days)
 
-        if not closes or len(closes) < 20:
+        if not daily_prices or len(daily_prices) < 20:
             self.query_one("#technical_display", Static).update(
                 f"Insufficient data for {self.current_ticker} technical analysis"
             )
             return
+
+        # Extract closes and volumes
+        closes = [p.close for p in daily_prices]
+        volumes = [p.volume for p in daily_prices]
 
         # Compute indicators
         current_price = closes[-1]
@@ -127,6 +143,23 @@ class TechnicalPanel(Widget):
         # v1.1 indicators
         distance_from_high = compute_distance_from_high(closes, 20)
         resilience_count = count_recovery_patterns(closes, 180)
+
+        # Volume statistics (1 year or available)
+        # Filter out zero volumes (incomplete/live trading days)
+        valid_volumes = [v for v in volumes if v > 0]
+        if valid_volumes:
+            avg_volume = sum(valid_volumes) / len(valid_volumes)
+            latest_volume = valid_volumes[-1]  # Most recent non-zero volume
+            min_volume = min(valid_volumes)
+            max_volume = max(valid_volumes)
+            vol_diff_pct = ((latest_volume - avg_volume) / avg_volume) * 100
+            vol_arrow = "▲" if latest_volume > avg_volume else "▼"
+            vol_color = "#00ff00" if latest_volume > avg_volume else "#ff0000"
+        else:
+            avg_volume = latest_volume = min_volume = max_volume = 0
+            vol_diff_pct = 0
+            vol_arrow = "→"
+            vol_color = "white"
 
         # Calculate Iceberg Scores (v1.3 - returns ScoreResult)
         trade_result = calculate_trade_score(
@@ -188,11 +221,11 @@ class TechnicalPanel(Widget):
                 change_color = "#ff0000"
                 arrow = "▼"
             else:
-                change_color = "#888888"
+                change_color = "white"
                 arrow = "→"
 
             display.append("Price:           ")
-            display.append(f"${current:.2f}  ", style="bold white")
+            display.append(f"${current:.2f}  ", style="white")
             display.append(f"{arrow} ${abs(change):.2f} ({change_pct:+.2f}%)", style=change_color)
             display.append("\n")
 
@@ -214,11 +247,25 @@ class TechnicalPanel(Widget):
             display.append(f"Low: ${week52_low:.2f} ({dist_from_low:+.1f}%)", style=low_color)
             display.append("\n")
 
+        # Volume statistics (1 year or available)
+        display.append("Volume:          ")
+        display.append(
+            f"Avg {self.format_volume(avg_volume)} | Last Close {self.format_volume(latest_volume)} ",
+            style="white"
+        )
+        display.append(f"{vol_arrow} ", style=vol_color)
+        display.append(f"({vol_diff_pct:+.0f}%)", style=vol_color)
+        display.append(
+            f" | Range: {self.format_volume(min_volume)} - {self.format_volume(max_volume)}",
+            style="white"
+        )
+        display.append("\n")
+
         display.append("\n")  # Blank line separator
 
         # MACD
         if macd:
-            color = "#00ff00" if macd.bias == MACDBias.BULL else "#ff0000" if macd.bias == MACDBias.BEAR else "bold white"
+            color = "#00ff00" if macd.bias == MACDBias.BULL else "#ff0000" if macd.bias == MACDBias.BEAR else "white"
             display.append("MACD(12,26,9):   ")
             display.append(macd.bias.value.title(), style=color)
             display.append(f" (MACD {macd.macd:.2f}, Signal {macd.signal:.2f}, Hist {macd.hist:.2f})\n")
@@ -230,11 +277,11 @@ class TechnicalPanel(Widget):
             color_map = {
                 RSIBias.OVERBOUGHT: "#ff0000",
                 RSIBias.STRONG: "#00ff00",
-                RSIBias.NEUTRAL: "bold white",
+                RSIBias.NEUTRAL: "white",
                 RSIBias.WEAK: "#ffaa00",
                 RSIBias.OVERSOLD: "#0088ff",
             }
-            color = color_map.get(rsi.bias, "#888888")
+            color = color_map.get(rsi.bias, "white")
             display.append("RSI(14):         ")
             display.append(f"{rsi.value:.1f}", style=color)
             display.append(f" - {rsi.bias.value.title()}\n", style=color)
@@ -254,10 +301,10 @@ class TechnicalPanel(Widget):
 
             if trend20:
                 trend20_direction = "Up" if trend20.bias == TrendBias.UP else "Down" if trend20.bias == TrendBias.DOWN else "Sideways"
-                trend20_color = "#00ff00" if trend20.bias == TrendBias.UP else "#ff0000" if trend20.bias == TrendBias.DOWN else "#888888"
+                trend20_color = "#00ff00" if trend20.bias == TrendBias.UP else "#ff0000" if trend20.bias == TrendBias.DOWN else "white"
             else:
                 trend20_direction = "N/A"
-                trend20_color = "#888888"
+                trend20_color = "white"
 
         # SMA(range) data
         sma_range = compute_sma(closes, len(closes)) if closes and len(closes) >= 2 else None
@@ -268,10 +315,10 @@ class TechnicalPanel(Widget):
 
             if trend_range:
                 trend_range_direction = "Up" if trend_range.bias == TrendBias.UP else "Down" if trend_range.bias == TrendBias.DOWN else "Sideways"
-                trend_range_color = "#00ff00" if trend_range.bias == TrendBias.UP else "#ff0000" if trend_range.bias == TrendBias.DOWN else "#888888"
+                trend_range_color = "#00ff00" if trend_range.bias == TrendBias.UP else "#ff0000" if trend_range.bias == TrendBias.DOWN else "white"
             else:
                 trend_range_direction = "N/A"
-                trend_range_color = "#888888"
+                trend_range_color = "white"
 
         # Display SMAs side by side
         if sma20:
@@ -301,7 +348,7 @@ class TechnicalPanel(Widget):
         # Helper function for beta interpretation
         def format_beta(beta_value, benchmark):
             if beta_value is None:
-                return ("Insufficient data", "#888888")
+                return ("Insufficient data", "white")
 
             if beta_value < 0:
                 color = "#00ffff"  # Cyan
@@ -328,7 +375,7 @@ class TechnicalPanel(Widget):
                 VolatilityBias.CHOPPY: "#ffaa00",
                 VolatilityBias.WILD: "#ff0000",
             }
-            color = color_map.get(volatility.bias, "#888888")
+            color = color_map.get(volatility.bias, "white")
             display.append("Volatility:      ")
             display.append(volatility.bias.value.title(), style=color)
             display.append(f" (daily σ = {volatility.sigma:.2f}%)\n")
