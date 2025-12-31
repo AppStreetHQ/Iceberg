@@ -12,7 +12,17 @@ from typing import List, Optional, Dict, Tuple
 from collections import defaultdict
 
 from ..data.db import Database
-from .indicators import compute_macd, compute_rsi, compute_sma, compute_trend, compute_volatility
+from .indicators import (
+    compute_macd,
+    compute_rsi,
+    compute_sma,
+    compute_trend,
+    compute_volatility,
+    compute_long_term_trend,
+    compute_distance_from_high,
+    count_recovery_patterns,
+    find_support_resistance,
+)
 from .scoring import calculate_trade_score, calculate_investment_score, get_rating_label
 
 
@@ -104,11 +114,11 @@ def calculate_score_at_date(
     trend50 = compute_trend(closes, 50)
     volatility = compute_volatility(closes)
 
-    # v1.1 indicators
-    from .indicators import compute_long_term_trend, compute_distance_from_high, count_recovery_patterns
+    # Additional indicators
     long_term_trend = compute_long_term_trend(closes, 100)
     distance_from_high = compute_distance_from_high(closes, 20)
     resilience_count = count_recovery_patterns(closes, 180)
+    support, resistance = find_support_resistance(closes, window=5)
 
     # Calculate scores (v1.3 - returns ScoreResult)
     trade_result = calculate_trade_score(
@@ -127,7 +137,9 @@ def calculate_score_at_date(
         volatility_bias=volatility.bias if volatility else None,
         distance_from_high=distance_from_high,
         resilience_count=resilience_count,
-        closes=closes
+        closes=closes,
+        support=support,
+        resistance=resistance
     )
 
     inv_result = calculate_investment_score(

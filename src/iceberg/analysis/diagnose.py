@@ -19,6 +19,7 @@ from .indicators import (
     compute_distance_from_high,
     count_recovery_patterns,
     compute_long_term_trend,
+    find_support_resistance,
 )
 from .scoring import (
     calculate_trade_score,
@@ -178,6 +179,17 @@ def diagnose_date(ticker: str, target_date: str):
     else:
         print("Trend Slope: N/A")
 
+    # Support/Resistance
+    support, resistance = find_support_resistance(closes, window=5)
+    if support:
+        print(f"Support: ${support:.2f}")
+    else:
+        print("Support: N/A")
+    if resistance:
+        print(f"Resistance: ${resistance:.2f}")
+    else:
+        print("Resistance: N/A")
+
     # Calculate scores
     print(f"\n{'='*70}")
     print("SCORING")
@@ -199,7 +211,9 @@ def diagnose_date(ticker: str, target_date: str):
         volatility_bias=volatility.bias if volatility else None,
         distance_from_high=distance_from_high,
         resilience_count=resilience_count,
-        closes=closes
+        closes=closes,
+        support=support,
+        resistance=resistance
     )
 
     inv_result = calculate_investment_score(

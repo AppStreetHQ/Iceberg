@@ -73,7 +73,9 @@ def calculate_trade_score(
     volatility_bias: Optional[VolatilityBias],
     distance_from_high: Optional[float] = None,
     resilience_count: int = 0,
-    closes: Optional[List[float]] = None
+    closes: Optional[List[float]] = None,
+    support: Optional[float] = None,
+    resistance: Optional[float] = None
 ) -> ScoreResult:
     """
     Calculate Trade Score for short-term trading signals (days/weeks).
@@ -178,6 +180,28 @@ def calculate_trade_score(
         eight_day_gain = ((closes[-1] - closes[-8]) / closes[-8]) * 100
         if eight_day_gain >= 10:
             score += 6  # Strong recovery (cumulative)
+
+    # ========================================================================
+    # SUPPORT/RESISTANCE CONSIDERATIONS
+    # ========================================================================
+
+    # Near support = good bounce opportunity (within 5% of support)
+    if support and current_price <= support * 1.05:
+        score += 10  # At support - good entry for bounce
+
+    # Just broke above resistance = breakout momentum (0-3% above)
+    if resistance and current_price > resistance and current_price <= resistance * 1.03:
+        score += 12  # Fresh breakout - momentum trade
+
+    # Near resistance = caution (within 5% below resistance, likely rejection)
+    if resistance and current_price >= resistance * 0.95 and current_price < resistance:
+        score -= 8  # Near ceiling - risky entry
+
+    # Room to run = better risk/reward (>10% upside to resistance)
+    if support and resistance:
+        upside_room = ((resistance - current_price) / current_price) * 100
+        if upside_room > 10:
+            score += 5  # >10% room to resistance
 
     # ========================================================================
     # CAUTION FLAGS (light penalties)

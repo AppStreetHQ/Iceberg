@@ -182,7 +182,9 @@ class TechnicalPanel(Widget):
             volatility_bias=volatility.bias if volatility else None,
             distance_from_high=distance_from_high,
             resilience_count=resilience_count,
-            closes=closes
+            closes=closes,
+            support=support,
+            resistance=resistance
         )
 
         inv_result = calculate_investment_score(

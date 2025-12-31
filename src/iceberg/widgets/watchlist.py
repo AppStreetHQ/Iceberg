@@ -286,6 +286,7 @@ class Watchlist(Widget):
             compute_distance_from_high,
             count_recovery_patterns,
             compute_long_term_trend,
+            find_support_resistance,
         )
 
         for item in self.items:
@@ -307,6 +308,7 @@ class Watchlist(Widget):
                 volatility = compute_volatility(closes)
                 distance_from_high = compute_distance_from_high(closes, 20)
                 resilience_count = count_recovery_patterns(closes, 180)
+                support, resistance = find_support_resistance(closes, window=5)
 
                 # Calculate both scores with all indicators
                 trade_result = calculate_trade_score(
@@ -325,7 +327,9 @@ class Watchlist(Widget):
                     volatility_bias=volatility.bias if volatility else None,
                     distance_from_high=distance_from_high,
                     resilience_count=resilience_count,
-                    closes=closes
+                    closes=closes,
+                    support=support,
+                    resistance=resistance
                 )
 
                 inv_result = calculate_investment_score(
