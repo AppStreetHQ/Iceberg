@@ -530,3 +530,54 @@ def compute_beta(stock_closes: List[float], market_closes: List[float], min_peri
         return beta
     except:
         return None
+
+
+def find_support_resistance(closes: List[float], window: int = 5) -> tuple[Optional[float], Optional[float]]:
+    """
+    Find nearest support and resistance levels based on swing highs/lows
+
+    Args:
+        closes: List of closing prices (oldest to newest)
+        window: Number of bars on each side to check for swing points
+
+    Returns:
+        Tuple of (support, resistance) or (None, None) if insufficient data
+    """
+    if len(closes) < window * 2 + 1:
+        return (None, None)
+
+    current_price = closes[-1]
+    swing_highs = []
+    swing_lows = []
+
+    # Find swing highs and swing lows
+    for i in range(window, len(closes) - window):
+        # Check if this is a swing high (local maximum)
+        is_swing_high = True
+        is_swing_low = True
+
+        for j in range(1, window + 1):
+            # Check left and right neighbors
+            if closes[i] <= closes[i - j] or closes[i] <= closes[i + j]:
+                is_swing_high = False
+            if closes[i] >= closes[i - j] or closes[i] >= closes[i + j]:
+                is_swing_low = False
+
+        if is_swing_high:
+            swing_highs.append(closes[i])
+        if is_swing_low:
+            swing_lows.append(closes[i])
+
+    # Find nearest resistance (swing high above current price)
+    resistance = None
+    resistance_candidates = [h for h in swing_highs if h > current_price]
+    if resistance_candidates:
+        resistance = min(resistance_candidates)  # Nearest above
+
+    # Find nearest support (swing low below current price)
+    support = None
+    support_candidates = [l for l in swing_lows if l < current_price]
+    if support_candidates:
+        support = max(support_candidates)  # Nearest below
+
+    return (support, resistance)

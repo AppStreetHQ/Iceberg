@@ -18,6 +18,7 @@ from ..analysis.indicators import (
     count_recovery_patterns,
     compute_long_term_trend,
     compute_beta,
+    find_support_resistance,
 )
 from ..analysis.models import MACDBias, RSIBias, TrendBias, VolatilityBias
 from ..analysis.scoring import (
@@ -160,6 +161,9 @@ class TechnicalPanel(Widget):
             vol_diff_pct = 0
             vol_arrow = "→"
             vol_color = "white"
+
+        # Support/Resistance levels
+        support, resistance = find_support_resistance(closes, window=5)
 
         # Calculate Iceberg Scores (v1.3 - returns ScoreResult)
         trade_result = calculate_trade_score(
@@ -388,6 +392,28 @@ class TechnicalPanel(Widget):
         display.append("  │  ", style="white")
         display.append("SPY: ", style="white")
         display.append(beta_spy_text, style=beta_spy_color)
+        display.append("\n")
+
+        # Support/Resistance levels
+        display.append("S/R Levels:      ")
+        if support:
+            support_pct = ((support - current_price) / current_price) * 100
+            support_color = "#ffaa00" if abs(support_pct) < 5 else "white"  # Orange if close
+            display.append(f"Support: ${support:.2f} ", style="white")
+            display.append(f"({support_pct:+.1f}%)", style=support_color)
+        else:
+            display.append("Support: N/A", style="white")
+
+        display.append("  │  ", style="white")
+
+        if resistance:
+            resistance_pct = ((resistance - current_price) / current_price) * 100
+            resistance_color = "#ffaa00" if resistance_pct < 5 else "white"  # Orange if close
+            display.append(f"Resistance: ${resistance:.2f} ", style="white")
+            display.append(f"({resistance_pct:+.1f}%)", style=resistance_color)
+        else:
+            display.append("Resistance: N/A", style="white")
+
         display.append("\n")
 
         # Store plain text for clipboard export
