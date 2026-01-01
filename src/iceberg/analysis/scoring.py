@@ -8,8 +8,8 @@ which provides two perspectives on stock signals:
 
 See docs/SCORES_2.0_PLAN.md for full methodology documentation.
 
-Version: 2.2.0 (2025-12-31)
-Support/Resistance integration for Trade Score
+Version: 2.3.0 (2026-01-01)
+Speculative bounce detection for volatile momentum stocks
 
 Trade Score (Short-term entry timing):
 - Identifies swing trade opportunities (dip/recovery + momentum plays)
@@ -17,6 +17,7 @@ Trade Score (Short-term entry timing):
 - Tiered overbought penalties (RSI 65+/70+)
 - Tiered parabolic top penalties (25%/30%/40%+ above SMA100)
 - Support/Resistance awareness (bounce opportunities, breakouts, rejections)
+- Speculative bounce bonus (volatile stocks with 4+ proven recoveries)
 - Validated via backtesting (ORCL, ASTS, MU, etc.)
 
 Investment Score (Long-term quality assessment):
@@ -138,6 +139,16 @@ def calculate_trade_score(
     # RSI oversold (< 35) - potential bounce
     if rsi_value is not None and rsi_value < 35:
         score += 12  # Oversold - potential bounce
+
+    # Speculative Bounce Setup - Volatile momentum stocks with proven bounce patterns
+    # Catches opportunities on high-attention stocks (ASTS, etc.) that swing wildly
+    # but recover quickly due to momentum/speculation, not fundamentals
+    # Requires 4+ recoveries to filter out weaker speculative stocks (e.g., IONQ)
+    if (resilience_count >= 4 and  # Highly proven bounce pattern
+        volatility_bias == VolatilityBias.WILD and  # Quick swings (>3% sigma)
+        rsi_value is not None and rsi_value < 40 and  # Oversold dip
+        distance_from_high is not None and -35 <= distance_from_high <= -15):  # Meaningful pullback
+        score += 15  # Speculative bounce opportunity
 
     # RSI overbought (tiered penalties for extended stocks)
     if rsi_value is not None:

@@ -130,7 +130,7 @@ class ScoresPanel(Widget):
         # Build display
         display = Text()
 
-        display.append("Iceberg™ Score System v2.2", style="#00ffff")
+        display.append("Iceberg™ Score System v2.3", style="#00ffff")
         display.append("\n\n")
 
         # Trade Score
