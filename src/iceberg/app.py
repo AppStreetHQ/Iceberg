@@ -51,7 +51,7 @@ class IcebergApp(App):
         self.config = config
         self.db = Database(config.db_path)
         self.finnhub = FinnhubClient()
-        self.day_ranges = [7, 30, 90, 120]
+        self.day_ranges = [7, 30, 90, 120, 180]
         self.day_range_index = 3  # Start at 120 days
         self.profile_cache = {}  # Cache company profiles by ticker
 
