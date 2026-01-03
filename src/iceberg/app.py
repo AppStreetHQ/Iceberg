@@ -30,6 +30,7 @@ class IcebergApp(App):
         Binding("k", "watchlist_up", "Previous ticker", show=False),
         Binding("down", "watchlist_down", "Next ticker", show=False),
         Binding("up", "watchlist_up", "Previous ticker", show=False),
+        Binding("space", "toggle_comparison", "Mark compare", show=True),
         Binding("c", "toggle_chart_mode", "Toggle chart mode", show=True),
         Binding("r", "cycle_day_range", "Cycle day range", show=True),
         Binding("s", "toggle_sort", "Toggle sort", show=True),
@@ -43,6 +44,7 @@ class IcebergApp(App):
     selected_ticker = reactive("AAPL", init=False)
     day_range = reactive(120, init=False)  # 7, 30, 90, 120
     chart_mode = reactive("absolute", init=False)  # "absolute" or "relative"
+    comparison_ticker = reactive(None, init=False)  # Optional ticker marked for comparison
 
     def __init__(self, config: Config):
         super().__init__()
@@ -86,6 +88,16 @@ class IcebergApp(App):
         """Handle ticker selection from watchlist"""
         self.selected_ticker = message.ticker
         self.update_panels()
+
+    def on_option_list_option_highlighted(self, event) -> None:
+        """Handle ticker highlight changes (from arrow keys or j/k navigation)"""
+        # Only handle events from the watchlist's option list
+        if event.option_list.id == "ticker_list":
+            watchlist = self.query_one("#watchlist", Watchlist)
+            ticker = watchlist.get_selected_ticker()
+            if ticker and ticker != self.selected_ticker:
+                self.selected_ticker = ticker
+                self.update_panels()
 
     def update_panels(self) -> None:
         """Update chart and technical panels with current ticker and range"""
@@ -131,6 +143,7 @@ class IcebergApp(App):
         scores = self.query_one("#scores", ScoresPanel)
 
         chart.update_ticker(self.selected_ticker, self.day_range)
+        chart.update_comparison(self.comparison_ticker)  # Preserve comparison state
         technical.update_ticker(self.selected_ticker, self.day_range)
         scores.update_ticker(self.selected_ticker, self.day_range)
 
@@ -193,6 +206,40 @@ class IcebergApp(App):
         """Toggle between day and range change display"""
         watchlist = self.query_one("#watchlist", Watchlist)
         watchlist.toggle_change_mode()
+
+    def action_toggle_comparison(self) -> None:
+        """Toggle comparison ticker for currently highlighted ticker in watchlist"""
+        watchlist = self.query_one("#watchlist", Watchlist)
+
+        # Get the currently viewed ticker (not the highlighted one)
+        ticker = self.selected_ticker
+
+        if not ticker:
+            return
+
+        # Toggle logic:
+        # - If this ticker is already marked: toggle it off
+        # - If a different ticker is marked (or none): mark this one
+        if self.comparison_ticker == ticker:
+            self.comparison_ticker = None
+            status_msg = "Comparison cleared"
+        else:
+            self.comparison_ticker = ticker
+            status_msg = f"Marked {ticker} for comparison"
+
+        self.update_comparison_panels()
+
+        status = self.query_one("#status_bar", StatusBar)
+        status.update_status(status_msg, "cyan" if self.comparison_ticker else None)
+
+    def update_comparison_panels(self) -> None:
+        """Update panels when comparison state changes"""
+        chart = self.query_one("#chart", ChartPanel)
+        watchlist = self.query_one("#watchlist", Watchlist)
+
+        # Update watchlist first to preserve selection, then chart
+        watchlist.set_comparison_ticker(self.comparison_ticker)
+        chart.update_comparison(self.comparison_ticker)
 
     def action_export_ta(self) -> None:
         """Copy technical analysis to clipboard"""

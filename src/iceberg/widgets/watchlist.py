@@ -43,6 +43,8 @@ class Watchlist(Widget):
         self.change_mode: str = "day"  # "day" or "range"
         self.day_range: int = initial_day_range  # Set from app
         self._preserved_ticker: Optional[str] = None  # Preserve selection across updates
+        self.comparison_ticker: Optional[str] = None  # Ticker marked for comparison
+        self.selected_ticker: Optional[str] = None  # Currently selected/viewed ticker
 
     def compose(self) -> ComposeResult:
         """Compose watchlist"""
@@ -139,7 +141,9 @@ class Watchlist(Widget):
 
                 # Build styled text
                 text = Text()
-                text.append(f"{item.ticker:<6} ", style="bold")
+                # Color comparison ticker in iceberg blue
+                ticker_style = "bold #00ffff" if item.ticker == self.comparison_ticker else "bold"
+                text.append(f"{item.ticker:<6} ", style=ticker_style)
 
                 # Add colored T and I score indicators
                 if item.trade_score is not None:
@@ -156,9 +160,24 @@ class Watchlist(Widget):
 
                 text.append(f" {price_str:>10} {arrow} {change_str:>8} ({change_pct_str:>7})", style=color)
 
+                # Add asterisk for comparison ticker
+                if item.ticker == self.comparison_ticker:
+                    text.append(" *", style="bold cyan")
+
                 display = text
             else:
-                display = f"{item.ticker:<6} TI {price_str:>10}"
+                # Plain text display for items without price data
+                text = Text()
+                # Color comparison ticker in iceberg blue
+                ticker_style = "bold #00ffff" if item.ticker == self.comparison_ticker else "bold"
+                text.append(f"{item.ticker:<6} ", style=ticker_style)
+                text.append(f"TI {price_str:>10}")
+
+                # Add asterisk for comparison ticker
+                if item.ticker == self.comparison_ticker:
+                    text.append(" *", style="bold cyan")
+
+                display = text
 
             option_list.add_option(Option(display, id=item.ticker))
 
@@ -190,6 +209,26 @@ class Watchlist(Widget):
             if 0 <= idx < len(self.items):
                 return self.items[idx].ticker
         return None
+
+    def set_comparison_ticker(self, ticker: Optional[str]) -> None:
+        """Set the comparison ticker and update display"""
+        old_comparison = self.comparison_ticker
+        self.comparison_ticker = ticker
+
+        # Only rebuild if comparison ticker actually changed
+        if old_comparison != ticker:
+            self._preserved_ticker = self.get_selected_ticker()  # Preserve current selection
+            self.update_display()
+
+    def set_selected_ticker(self, ticker: Optional[str]) -> None:
+        """Set the currently selected/viewed ticker and update display"""
+        old_selected = self.selected_ticker
+        self.selected_ticker = ticker
+
+        # Only rebuild if selected ticker actually changed
+        if old_selected != ticker:
+            self._preserved_ticker = self.get_selected_ticker()  # Preserve current selection
+            self.update_display()
 
     def get_selected_item(self) -> Optional[WatchlistItem]:
         """Get currently selected watchlist item"""
