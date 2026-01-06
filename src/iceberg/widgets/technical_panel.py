@@ -311,7 +311,7 @@ class TechnicalPanel(Widget):
                 trend20_color = "white"
 
         # SMA(range) data
-        sma_range = compute_sma(closes, len(closes)) if closes and len(closes) >= 2 else None
+        sma_range = compute_sma(closes, min(len(closes), self.current_range)) if closes and len(closes) >= 2 else None
         if sma_range:
             sma_range_diff_pct = ((current_price - sma_range) / sma_range) * 100 if sma_range != 0 else 0
             sma_range_emoji = "🟢" if current_price > sma_range else "🔴"
