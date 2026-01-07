@@ -12,6 +12,7 @@ from ..analysis.indicators import (
     compute_macd,
     compute_rsi,
     compute_sma,
+    compute_ema,
     compute_trend,
     compute_volatility,
     compute_distance_from_high,
@@ -104,6 +105,10 @@ class TechnicalPanel(Widget):
         sma20 = compute_sma(closes, 20)
         sma50 = compute_sma(closes, 50)
         sma100 = compute_sma(closes, 100)
+
+        # EMA for display
+        ema12_list = compute_ema(closes, 12)
+        ema12 = ema12_list[-1] if ema12_list else None
 
         # Trends for scoring and display
         trend10 = compute_trend(closes, 10)
@@ -269,15 +274,6 @@ class TechnicalPanel(Widget):
 
         display.append("\n")  # Blank line separator
 
-        # MACD
-        if macd:
-            color = "#00ff00" if macd.bias == MACDBias.BULL else "#ff0000" if macd.bias == MACDBias.BEAR else "white"
-            display.append("MACD(12,26,9):   ")
-            display.append(macd.bias.value.title(), style=color)
-            display.append(f" (MACD {macd.macd:.2f}, Signal {macd.signal:.2f}, Hist {macd.hist:.2f})\n", style="white")
-        else:
-            display.append("MACD(12,26,9):   N/A\n")
-
         # RSI
         if rsi:
             color_map = {
@@ -294,8 +290,42 @@ class TechnicalPanel(Widget):
         else:
             display.append("RSI(14):         N/A\n")
 
-        # SMAs - side by side to save space
+        # MACD
+        if macd:
+            color = "#00ff00" if macd.bias == MACDBias.BULL else "#ff0000" if macd.bias == MACDBias.BEAR else "white"
+            display.append("MACD(12,26,9):   ")
+            display.append(macd.bias.value.title(), style=color)
+            display.append(f" (MACD {macd.macd:.2f}, Signal {macd.signal:.2f}, Hist {macd.hist:.2f})\n", style="white")
+        else:
+            display.append("MACD(12,26,9):   N/A\n")
+
+        # EMA(12)
         current_price = closes[-1] if closes else 0
+        if ema12:
+            ema12_diff_pct = ((current_price - ema12) / ema12) * 100 if ema12 != 0 else 0
+            ema12_color = "#00ff00" if current_price > ema12 else "#ff0000"
+            arrow12 = "▲" if current_price > ema12 else "▼" if current_price < ema12 else "→"
+
+            # Determine EMA trend (same thresholds as SMA trends)
+            if ema12_diff_pct > 2.0:
+                ema12_trend_direction = "Up"
+                ema12_trend_color = "#00ff00"
+            elif ema12_diff_pct < -2.0:
+                ema12_trend_direction = "Down"
+                ema12_trend_color = "#ff0000"
+            else:
+                ema12_trend_direction = "Sideways"
+                ema12_trend_color = "white"
+
+            display.append("EMA(12):         ")
+            display.append(f"${ema12:.2f} ({arrow12} {ema12_diff_pct:+.2f}%)", style=ema12_color)
+            display.append(" Trend: ", style="white")
+            display.append(ema12_trend_direction, style=ema12_trend_color)
+            display.append("\n")
+        else:
+            display.append("EMA(12):         N/A\n")
+
+        # SMAs - side by side to save space
 
         # SMA(20) data
         if sma20:
