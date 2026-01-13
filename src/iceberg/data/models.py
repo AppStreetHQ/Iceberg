@@ -36,6 +36,24 @@ class DailyPrice:
 
 
 @dataclass
+class Holding:
+    """Portfolio holding"""
+
+    ticker: str
+    shares: float
+    updated_at: str  # UTC timestamp
+
+    @classmethod
+    def from_row(cls, row) -> "Holding":
+        """Create from SQLite row"""
+        return cls(
+            ticker=row["ticker"],
+            shares=row["shares"],
+            updated_at=row["updated_at_utc"],
+        )
+
+
+@dataclass
 class WatchlistItem:
     """Item in the watchlist"""
 
@@ -48,6 +66,7 @@ class WatchlistItem:
     range_change_pct: Optional[float] = None  # Percentage change over range
     trade_score: Optional[int] = None  # Iceberg Trade Score (0-100)
     investment_score: Optional[int] = None  # Iceberg Investment Score (0-100)
+    shares_held: float = 0.0  # Number of shares held in portfolio
 
     @property
     def price_change(self) -> Optional[float]:

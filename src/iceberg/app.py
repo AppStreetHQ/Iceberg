@@ -19,6 +19,8 @@ from .widgets.chart import ChartPanel
 from .widgets.technical_panel import TechnicalPanel
 from .widgets.scores_panel import ScoresPanel
 from .widgets.status_bar import StatusBar
+from .widgets.portfolio_summary import PortfolioSummary
+from .widgets.holdings_dialog import HoldingsInputDialog
 
 
 class IcebergApp(App):
@@ -39,6 +41,7 @@ class IcebergApp(App):
         Binding("d", "toggle_change_mode", "Toggle day/range", show=True),
         Binding("e", "export_ta", "Copy TA", show=True),
         Binding("u", "update_prices", "Update prices", show=True),
+        Binding("p", "edit_holding", "Edit holding", show=True),
         Binding("q", "quit", "Quit", show=True),
     ]
 
@@ -73,6 +76,7 @@ class IcebergApp(App):
             with Vertical(id="left_panel"):
                 yield TickerBanner(self.db, id="ticker_banner")
                 yield Watchlist(self.db, self.config.watchlist_csv, self.day_range, id="watchlist")
+                yield PortfolioSummary(self.db, id="portfolio_summary")
             with Vertical(id="main_display"):
                 yield ChartPanel(self.db, self.config.chart_height, self.day_range, id="chart")
                 yield TechnicalPanel(self.db, self.day_range, id="technical")
@@ -286,6 +290,48 @@ class IcebergApp(App):
             status = self.query_one("#status_bar", StatusBar)
             status.update_status(f"Failed to copy: {e}", "red")
 
+    def action_edit_holding(self) -> None:
+        """Edit holdings for currently selected ticker"""
+        # Get currently selected ticker
+        ticker = self.selected_ticker
+        if not ticker:
+            status = self.query_one("#status_bar", StatusBar)
+            status.update_status("No ticker selected", "yellow")
+            return
+
+        # Get current holding
+        current_shares = self.db.get_holding(ticker)
+
+        # Define callback for when dialog is dismissed
+        def handle_result(shares: Optional[float]) -> None:
+            """Callback when dialog is dismissed"""
+            status = self.query_one("#status_bar", StatusBar)
+
+            if shares is not None:
+                # Update database
+                if self.db.upsert_holding(ticker, shares):
+                    # Refresh watchlist to show new holding
+                    watchlist = self.query_one("#watchlist", Watchlist)
+                    watchlist.refresh_prices()
+
+                    # Refresh portfolio summary
+                    portfolio = self.query_one("#portfolio_summary", PortfolioSummary)
+                    portfolio.refresh_portfolio()
+
+                    if shares == 0:
+                        status.update_status(f"Cleared holding for {ticker}", "green")
+                    else:
+                        status.update_status(
+                            f"Set {ticker} holding to {shares:.2f} shares", "green"
+                        )
+                else:
+                    status.update_status(f"Failed to update holding for {ticker}", "red")
+            else:
+                status.update_status("Cancelled", "yellow")
+
+        # Show dialog
+        self.push_screen(HoldingsInputDialog(ticker, current_shares), handle_result)
+
     def _check_market_status(self) -> Optional[Dict[str, Any]]:
         """Check current market status and update state
 
@@ -436,6 +482,10 @@ class IcebergApp(App):
         status = self.query_one("#status_bar", StatusBar)
 
         watchlist.refresh_prices()
+
+        # Refresh portfolio summary
+        portfolio = self.query_one("#portfolio_summary", PortfolioSummary)
+        portfolio.refresh_portfolio()
 
         # Refresh market status as well
         status.refresh_market_status()

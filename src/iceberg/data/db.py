@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
-from .models import DailyPrice
+from .models import DailyPrice, Holding
 
 
 class Database:
@@ -14,6 +14,7 @@ class Database:
 
     def __init__(self, db_path: Path):
         self.db_path = db_path
+        self.ensure_holdings_table()
 
     @contextmanager
     def get_connection(self):
@@ -164,3 +165,64 @@ class Database:
         )
 
         return True
+
+    def ensure_holdings_table(self) -> None:
+        """Create holdings table if it doesn't exist"""
+        with self.get_connection() as conn:
+            query = """
+                CREATE TABLE IF NOT EXISTS holdings (
+                    ticker TEXT PRIMARY KEY,
+                    shares REAL NOT NULL DEFAULT 0,
+                    updated_at_utc TEXT NOT NULL
+                )
+            """
+            conn.execute(query)
+            conn.commit()
+
+    def get_holding(self, ticker: str) -> float:
+        """Get shares held for a ticker (returns 0 if no holding)"""
+        with self.get_connection() as conn:
+            query = "SELECT shares FROM holdings WHERE ticker = ?"
+            cursor = conn.execute(query, (ticker,))
+            row = cursor.fetchone()
+            return row[0] if row else 0.0
+
+    def upsert_holding(self, ticker: str, shares: float) -> bool:
+        """Insert or update holding for a ticker
+
+        Returns:
+            True if successfully updated, False on error
+        """
+        try:
+            with self.get_connection() as conn:
+                updated_at = datetime.utcnow().isoformat()
+
+                if shares == 0:
+                    # Delete holding if shares are 0
+                    query = "DELETE FROM holdings WHERE ticker = ?"
+                    conn.execute(query, (ticker,))
+                else:
+                    # Upsert holding
+                    query = """
+                        INSERT OR REPLACE INTO holdings (ticker, shares, updated_at_utc)
+                        VALUES (?, ?, ?)
+                    """
+                    conn.execute(query, (ticker, shares, updated_at))
+
+                conn.commit()
+                return True
+        except Exception:
+            return False
+
+    def get_all_holdings(self) -> List[Holding]:
+        """Get all holdings with shares > 0"""
+        with self.get_connection() as conn:
+            query = """
+                SELECT ticker, shares, updated_at_utc
+                FROM holdings
+                WHERE shares > 0
+                ORDER BY ticker
+            """
+            cursor = conn.execute(query)
+            rows = cursor.fetchall()
+            return [Holding.from_row(row) for row in rows]

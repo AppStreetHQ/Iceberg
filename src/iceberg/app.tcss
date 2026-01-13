@@ -48,7 +48,7 @@ MarketIndices {
 
 /* Left panel - ticker banner + watchlist */
 #left_panel {
-    width: 50;
+    width: 54;
     border-right: solid #333333;
     background: black;
 }
@@ -221,4 +221,81 @@ StatusBar {
 
 .neutral {
     color: #888888;
+}
+
+/* Holdings Input Dialog */
+HoldingsInputDialog {
+    align: center middle;
+}
+
+#holdings_dialog {
+    width: 50;
+    height: auto;
+    background: #1a1a1a;
+    border: thick white;
+    padding: 1 2;
+}
+
+#dialog_title {
+    width: 100%;
+    text-align: center;
+    text-style: bold;
+    color: white;
+    padding: 0 0 1 0;
+}
+
+#current_holdings {
+    width: 100%;
+    color: #888;
+    padding: 0 0 1 0;
+}
+
+#shares_input {
+    width: 100%;
+    margin: 0 0 1 0;
+}
+
+#dialog_buttons {
+    width: 100%;
+    height: auto;
+    align: center middle;
+}
+
+#dialog_buttons Button {
+    margin: 0 1;
+}
+
+/* Portfolio Summary Panel */
+PortfolioSummary {
+    height: auto;
+    border-top: solid #333333;
+    background: black;
+}
+
+#portfolio_container {
+    width: 100%;
+    height: auto;
+    padding: 1;
+}
+
+#portfolio_header {
+    text-style: bold;
+    text-align: left;
+    color: white;
+    padding: 0 0 1 0;
+}
+
+#portfolio_value_usd {
+    color: white;
+    text-align: left;
+}
+
+#portfolio_value_gbp {
+    color: white;
+    text-align: left;
+}
+
+#portfolio_change {
+    text-align: left;
+    padding: 1 0 0 0;
 }

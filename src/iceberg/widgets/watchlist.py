@@ -74,6 +74,9 @@ class Watchlist(Widget):
             if prev_close:
                 item.previous_close = prev_close
 
+            # Fetch holdings
+            item.shares_held = self.db.get_holding(ticker)
+
             self.items.append(item)
 
         # Calculate range-based changes
@@ -160,6 +163,13 @@ class Watchlist(Widget):
 
                 text.append(f" {price_str:>10} {arrow} {change_str:>8} ({change_pct_str:>7})", style=color)
 
+                # Add shares held column (compact, leaves room for scrollbar)
+                if item.shares_held > 0:
+                    shares_str = f"{item.shares_held:>4.0f}" if item.shares_held >= 1 else f"{item.shares_held:>4.1f}"
+                    text.append(f" {shares_str}", style="cyan")
+                else:
+                    text.append(" " * 5, style="white")  # Blank if no shares
+
                 # Add asterisk for comparison ticker
                 if item.ticker == self.comparison_ticker:
                     text.append(" *", style="bold cyan")
@@ -172,6 +182,13 @@ class Watchlist(Widget):
                 ticker_style = "bold #00ffff" if item.ticker == self.comparison_ticker else "bold"
                 text.append(f"{item.ticker:<6} ", style=ticker_style)
                 text.append(f"TI {price_str:>10}")
+
+                # Add shares held column (even if no price data)
+                if item.shares_held > 0:
+                    shares_str = f"{item.shares_held:>4.0f}" if item.shares_held >= 1 else f"{item.shares_held:>4.1f}"
+                    text.append(f" {shares_str}", style="cyan")
+                else:
+                    text.append(" " * 5, style="white")  # Blank if no shares
 
                 # Add asterisk for comparison ticker
                 if item.ticker == self.comparison_ticker:
@@ -434,6 +451,9 @@ class Watchlist(Widget):
             prev_close = self.db.get_previous_close(item.ticker)
             if prev_close:
                 item.previous_close = prev_close
+
+            # Fetch holdings
+            item.shares_held = self.db.get_holding(item.ticker)
 
         # Recalculate range-based changes
         self.calculate_range_changes()
